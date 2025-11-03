@@ -1,0 +1,11 @@
+.air
+.air.toml
+.cache
+.git
+.gitignore
+Dockerfile
+image/raw
+localpg
+pgsocket
+server.log
+vendor

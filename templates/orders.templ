@@ -1,0 +1,128 @@
+package templates
+
+import (
+	"fmt"
+	"gogo/database"
+	"strconv"
+	"strings"
+)
+
+templ OrdersPage(orders []*database.OrderDetail, createdOrderID string, isAuthenticated bool) {
+    <html>
+        <head>
+            <title>Мои заказы</title>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <link rel="stylesheet" href="/static/style.css"/>
+            <script src="/static/htmx.min.js"></script>
+        </head>
+        <body>
+            @Header(isAuthenticated, true)
+            <main class="orders">
+                <div class="container">
+                    <section class="orders__section">
+                        <header class="orders__header">
+                            <h1 class="orders__title">Мои заказы</h1>
+                            if createdOrderID != "" {
+                                <p class="orders__subtitle orders__subtitle--success">
+                                    Заказ №{ createdOrderID } успешно оформлен.
+                                </p>
+                            } else {
+                                <p class="orders__subtitle">Здесь хранится история ваших заказов и подробности по каждому из них.</p>
+                            }
+                        </header>
+                        if len(orders) == 0 {
+                            <div class="orders__empty">
+                                <h2 class="orders__empty-title">Список заказов пуст</h2>
+                                <p class="orders__empty-text">Соберите корзину и оформите заказ, чтобы увидеть его в истории.</p>
+                                <a class="btn-primary orders__empty-action" href="/">Перейти в каталог</a>
+                            </div>
+                        } else {
+                            <div class="orders__list">
+                                for _, detail := range orders {
+                                    if detail == nil || detail.Order == nil {
+                                        continue
+                                    }
+                                    <article class={ map[bool]string{true: "orders-card orders-card--highlight", false: "orders-card"}[createdOrderID != "" && strconv.Itoa(detail.Order.ID) == createdOrderID] }>
+                                    <header class="orders-card__header">
+                                        <div>
+                                            <p class="orders-card__number">Заказ №{ strconv.Itoa(detail.Order.ID) }</p>
+                                            <p class="orders-card__date">{ detail.Order.CreatedAt.Format("02.01.2006 15:04") }</p>
+                                        </div>
+                                        <div class="orders-card__total">
+                                            <span>Сумма</span>
+                                            <strong>{ fmt.Sprintf("%s ₽", strconv.FormatFloat(detail.Order.Total, 'f', 2, 64)) }</strong>
+                                        </div>
+                                    </header>
+                                    <div class="orders-card__meta">
+                                        <span class="orders-card__meta-item">
+                                            Способ доставки: {
+                                                func(value string) string {
+                                                    switch strings.ToLower(strings.TrimSpace(value)) {
+                                                    case "courier":
+                                                        return "Курьер"
+                                                    case "post":
+                                                        return "Почта России"
+                                                    default:
+                                                        return "Пункт выдачи"
+                                                    }
+                                                }(detail.Order.DeliveryType)
+                                            }
+                                        </span>
+                                        if strings.EqualFold(strings.TrimSpace(detail.Order.DeliveryType), "pickup") {
+                                            if note := strings.TrimSpace(detail.Order.PickupPoint); note != "" {
+                                                <span class="orders-card__meta-item">Пункт выдачи: { note }</span>
+                                            }
+                                        }
+                                        if note := strings.TrimSpace(detail.Order.Address); note != "" {
+                                            <span class="orders-card__meta-item">Адрес: { note }</span>
+                                        }
+                                    </div>
+                                    <ul class="orders-card__items">
+                                        for _, item := range detail.Items {
+                                            if item == nil {
+                                                continue
+                                            }
+                                            <li class="orders-item">
+                                                <div class="orders-item__media">
+                                                    if image := strings.TrimSpace(item.ProductImageURL); image != "" {
+                                                        <img src={ image } alt={ item.ProductName } class="orders-item__image"/>
+                                                    } else {
+                                                        <div class="orders-item__image orders-item__image--placeholder" aria-hidden="true"></div>
+                                                    }
+                                                </div>
+                                                <div class="orders-item__info">
+                                                    <p class="orders-item__name">{ item.ProductName }</p>
+                                                    <div class="orders-item__meta">
+                                                        <span class="orders-item__badge">
+                                                            Размер: {
+                                                                func() string {
+                                                                    trimmed := strings.TrimSpace(item.Size)
+                                                                    if trimmed != "" {
+                                                                        return trimmed
+                                                                    }
+                                                                    return "—"
+                                                                }()
+                                                            }
+                                                        </span>
+                                                        <span class="orders-item__badge">Количество: { strconv.Itoa(item.Quantity) }</span>
+                                                    </div>
+                                                </div>
+                                                <div class="orders-item__pricing">
+                                                    <span class="orders-item__price">Цена: { fmt.Sprintf("%s ₽", strconv.FormatFloat(item.ProductPrice, 'f', 2, 64)) }</span>
+                                                    <span class="orders-item__sum">Сумма: { fmt.Sprintf("%s ₽", strconv.FormatFloat(item.ProductPrice*float64(item.Quantity), 'f', 2, 64)) }</span>
+                                                </div>
+                                            </li>
+                                        }
+                                    </ul>
+                                    </article>
+                                }
+                            </div>
+                        }
+                    </section>
+                </div>
+            </main>
+            @Banner()
+        </body>
+    </html>
+}

@@ -1,0 +1,80 @@
+package templates
+
+import (
+	"gogo/database"
+	"strings"
+)
+
+templ Personal(user *database.User) {
+    <html>
+        <head>
+            <title>Личный кабинет</title>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <link rel="stylesheet" href="/static/style.css"/>
+            <script src="/static/htmx.min.js"></script>
+        </head>
+        <body>
+            @Header(true, true)
+            <main class="personal-dashboard">
+                <div class="container personal-dashboard__container">
+                    <section class="personal-dashboard__profile">
+                        <form class="personal-dashboard__avatar-form" method="post" action="/personal/avatar" enctype="multipart/form-data">
+                            <label class="personal-dashboard__photo" for="profile_avatar" aria-live="polite" role="button" tabindex="0">
+                                if avatar := strings.TrimSpace(user.AvatarURL); avatar != "" {
+                                    <img src={ avatar } alt="Фото профиля" width="300" height="300" class="personal-dashboard__photo-image"/>
+                                } else {
+                                    <div class="personal-dashboard__photo-placeholder" aria-hidden="true">300×300</div>
+                                }
+                                <span class="personal-dashboard__photo-overlay" aria-hidden="true">Загрузить фото</span>
+                            </label>
+                            <input class="personal-dashboard__upload-input" id="profile_avatar" type="file" name="avatar" accept="image/*" data-avatar-input/>
+                        </form>
+                        <div class="personal-dashboard__details">
+                            <p class="personal-dashboard__name">
+                                if trimmed := strings.TrimSpace(user.FirstName); trimmed != "" {
+                                    { strings.ToUpper(trimmed) }
+                                } else {
+                                    { strings.ToUpper("Имя не указано") }
+                                }
+                            </p>
+                            <p class="personal-dashboard__name">
+                                if trimmed := strings.TrimSpace(user.LastName); trimmed != "" {
+                                    { strings.ToUpper(trimmed) }
+                                } else {
+                                    { strings.ToUpper("Фамилия не указана") }
+                                }
+                            </p>
+                            <p class="personal-dashboard__email">{ strings.ToUpper(strings.TrimSpace(user.Email)) }</p>
+                            <nav class="personal-dashboard__links" aria-label="Навигация профиля">
+                                <a class="personal-dashboard__link" href="/orders">Заказы</a>
+                                <a class="personal-dashboard__link" href="/address-book">Адреса</a>
+                            </nav>
+                        </div>
+                    </section>
+                </div>
+            </main>
+            @Banner()
+            <script>
+                (function () {
+                    var input = document.querySelector('[data-avatar-input]');
+                    var trigger = document.querySelector('.personal-dashboard__photo');
+                    if (!input) { return; }
+                    input.addEventListener('change', function () {
+                        if (input.files && input.files.length && input.closest('form')) {
+                            input.closest('form').submit();
+                        }
+                    });
+                    if (trigger) {
+                        trigger.addEventListener('keydown', function (event) {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                input.click();
+                            }
+                        });
+                    }
+                })();
+            </script>
+        </body>
+    </html>
+}

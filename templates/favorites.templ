@@ -1,0 +1,43 @@
+package templates
+
+import (
+	"gogo/database"
+)
+
+templ Favorites(products []*database.Product, favorites map[int]bool, isAuthenticated bool) {
+    <html>
+        <head>
+            <title>Избранное</title>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <link rel="stylesheet" href="/static/style.css"/>
+            <script src="/static/htmx.min.js"></script>
+        </head>
+        <body>
+            @Header(isAuthenticated, false)
+            <main class="main-content">
+                <div class="container">
+                    <section class="favorites">
+                        <header class="favorites__header">
+                            <h1 class="favorites__title">Избранные товары</h1>
+                            <p class="favorites__subtitle">Сохраняйте понравившиеся позиции, чтобы вернуться к ним позже.</p>
+                        </header>
+                        if len(products) == 0 {
+                            <div class="favorites__empty">
+                                <p class="favorites__empty-text">Вы еще не добавили товары в избранное.</p>
+                                <a class="btn-primary favorites__return" href="/">Продолжить покупки</a>
+                            </div>
+                        } else {
+                            <div class="product-grid favorites__grid">
+                                for _, product := range products {
+                                    @ProductCard(product, favorites[product.ID], isAuthenticated)
+                                }
+                            </div>
+                        }
+                    </section>
+                </div>
+            </main>
+            @Banner()
+        </body>
+    </html>
+}

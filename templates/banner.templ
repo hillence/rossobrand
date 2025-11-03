@@ -1,0 +1,10 @@
+package templates
+
+templ Banner() {
+    <div id="cookie-banner" class="cookie-banner">
+        <div class="container cookie-banner__inner">
+            <p class="cookie-banner__text">Наш сайт использует файлы cookie, чтобы повысить эффективность. Продолжая использовать сайт, вы соглашаетесь с условиями Политики конфиденциальности.</p>
+            <button hx-post="/accept-cookies" hx-swap="outerHTML" hx-target="#cookie-banner" class="cookie-banner__button">ПРИНИМАЮ</button>
+        </div>
+    </div>
+}

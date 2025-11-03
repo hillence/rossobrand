@@ -1,0 +1,630 @@
+package templates
+
+import (
+    "fmt"
+    "gogo/database"
+    "strings"
+)
+
+templ AddressBook(isAuthenticated bool, addresses []*database.UserSavedAddress, redirectAfterSave bool) {
+    <html>
+        <head>
+            <title>Адреса доставки</title>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <link rel="stylesheet" href="/static/style.css"/>
+            <script src="/static/htmx.min.js"></script>
+        </head>
+        <body>
+            @Header(isAuthenticated, false)
+            <main class="address-book" data-address-redirect={ fmt.Sprintf("%t", redirectAfterSave) }>
+                <div class="container">
+                    <section class="address-book__section">
+                        <header class="address-book__header">
+                            <h1 class="address-book__title">Адреса доставки</h1>
+                            <p class="address-book__subtitle">Добавьте адрес, чтобы оформить доставку.</p>
+                        </header>
+                        <div class="address-book__list" data-address-list>
+                            <p class="address-book__empty" data-address-empty style={ map[bool]string{true: "", false: "display:none;"}[len(addresses) == 0] }>Адреса пока не добавлены.</p>
+                            for _, item := range addresses {
+                                if item != nil {
+                                    <div class="address-card" data-address-item data-address-id={ fmt.Sprintf("%d", item.ID) } data-address-value={ strings.TrimSpace(item.Address) }>
+                                        <button type="button" class="address-card__select" data-address-select>{ strings.TrimSpace(item.Address) }</button>
+                                        <button type="button" class="address-card__delete" data-address-delete aria-label="Удалить адрес">
+                                            <span>Удалить</span>
+                                        </button>
+                                    </div>
+                                }
+                            }
+                        </div>
+                        <div class="address-book__actions">
+                            <button type="button" class="address-book__add" data-address-add>
+                                <span class="address-book__add-icon">+</span>
+                                <span>Добавить новый адрес</span>
+                            </button>
+                        </div>
+                        <div class="address-book__map" data-address-map-container hidden>
+                            <div class="address-map" data-address-map-shell>
+                                <div class="address-map__search-toggle">
+                                    <button type="button" class="address-map__search-trigger" data-address-search-toggle>Введите адрес</button>
+                                </div>
+                                <p class="address-map__selection is-muted" data-address-selection>Перемещайте карту, чтобы выбрать адрес.</p>
+                                <div class="address-map__shell">
+                                    <div class="address-map__canvas" id="address-map" role="presentation" data-address-map-canvas></div>
+                                    <div class="address-map__marker" data-address-marker aria-hidden="true">
+                                        <span class="address-map__marker-outer">
+                                            <span class="address-map__marker-inner"></span>
+                                        </span>
+                                        <span class="address-map__marker-stem"></span>
+                                        <span class="address-map__marker-shadow"></span>
+                                    </div>
+                                    <button type="button" class="address-map__geo" data-address-geo aria-label="Определить текущее местоположение">
+                                        <span class="visually-hidden">Определить текущее местоположение</span>
+                                        <span class="address-map__geo-icon" aria-hidden="true"></span>
+                                    </button>
+                                </div>
+                                <div class="address-map__footer">
+                                    <button type="button" class="address-map__save" data-address-save disabled>Сохранить адрес</button>
+                                </div>
+                                <div class="address-map__search-panel" data-address-search-panel hidden>
+                                    <div class="address-map__search-content">
+                                        <input type="text" class="address-map__search-input" placeholder="Например, Москва, Тверская 7" data-address-input/>
+                                        <div class="address-map__results" data-address-results></div>
+                                        <button type="button" class="address-map__search-close" data-address-search-close>Показать</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+            @Banner()
+            <script>
+                (function () {
+                    var doc = document;
+                    var root = doc.querySelector('.address-book');
+                    if (!root) { return; }
+
+                    var redirectAfterSave = root.getAttribute('data-address-redirect') === 'true';
+                    var addButton = root.querySelector('[data-address-add]');
+                    var mapWrapper = root.querySelector('[data-address-map-container]');
+                    var mapShell = root.querySelector('[data-address-map-shell]');
+                    var mapCanvas = root.querySelector('[data-address-map-canvas]');
+                    var markerElement = root.querySelector('[data-address-marker]');
+                    var saveButton = root.querySelector('[data-address-save]');
+                    var selectionText = root.querySelector('[data-address-selection]');
+                    var searchToggle = root.querySelector('[data-address-search-toggle]');
+                    var searchPanel = root.querySelector('[data-address-search-panel]');
+                    var searchInput = root.querySelector('[data-address-input]');
+                    var resultsBox = root.querySelector('[data-address-results]');
+                    var searchClose = root.querySelector('[data-address-search-close]');
+                    var geoButton = root.querySelector('[data-address-geo]');
+                    var listContainer = root.querySelector('[data-address-list]');
+                    var emptyState = root.querySelector('[data-address-empty]');
+
+                    var yandexApiKey = '5d0f0a04-cea3-40ff-940e-5a97428fad05';
+                    var scriptLoaded = false;
+                    var mapInitialized = false;
+                    var mapOpened = false;
+                    var mapInstance = null;
+                    var markerLandingTimer = null;
+                    var centerUpdateTimer = null;
+                    var lastFetchedKey = '';
+                    var debounceTimer = null;
+                    var geoBusy = false;
+                    var pendingGeo = false;
+                    var selectedAddressValue = '';
+                    var selectedCoordinates = null;
+
+                    function toggleEmptyState() {
+                        if (!emptyState || !listContainer) { return; }
+                        var hasItems = listContainer.querySelector('[data-address-item]') !== null;
+                        if (hasItems) {
+                            emptyState.style.display = 'none';
+                        } else {
+                            emptyState.style.display = '';
+                        }
+                    }
+
+                    toggleEmptyState();
+
+                    if (addButton) {
+                        addButton.addEventListener('click', function () {
+                            showMap();
+                        });
+                    }
+
+                    function showMap() {
+                        if (!mapWrapper) { return; }
+                        if (mapOpened) { return; }
+                        mapOpened = true;
+                        mapWrapper.hidden = false;
+                        mapWrapper.classList.add('is-open');
+                        if (saveButton) {
+                            saveButton.textContent = 'Сохранить адрес';
+                            saveButton.disabled = true;
+                        }
+                        updateSelection('');
+                        updateSaveState();
+                        if (!scriptLoaded) {
+                            loadScript(initMap);
+                        } else {
+                            initMap();
+                        }
+                    }
+
+                    function hideMap() {
+                        if (!mapWrapper) { return; }
+                        mapOpened = false;
+                        mapWrapper.hidden = true;
+                        mapWrapper.classList.remove('is-open');
+                    }
+
+                    function updateSelection(text) {
+                        if (!selectionText) { return; }
+                        if (text) {
+                            selectionText.textContent = 'Выбранный адрес: ' + text;
+                            selectionText.classList.remove('is-muted');
+                        } else {
+                            selectionText.textContent = 'Перемещайте карту, чтобы выбрать адрес.';
+                            selectionText.classList.add('is-muted');
+                        }
+                    }
+
+                    function updateSaveState() {
+                        if (!saveButton) { return; }
+                        saveButton.disabled = !selectedAddressValue;
+                    }
+
+                    function loadScript(callback) {
+                        if (scriptLoaded) {
+                            if (typeof callback === 'function') {
+                                callback();
+                            }
+                            return;
+                        }
+                        var script = doc.createElement('script');
+                        script.src = 'https://api-maps.yandex.ru/2.1/?apikey=' + yandexApiKey + '&lang=ru_RU';
+                        script.onload = function () {
+                            scriptLoaded = true;
+                            if (window.ymaps) {
+                                window.ymaps.ready(callback);
+                            }
+                        };
+                        script.onerror = function () {
+                            updateSelection('Не удалось загрузить карту. Попробуйте обновить страницу.');
+                        };
+                        doc.head.appendChild(script);
+                    }
+
+                    function initMap() {
+                        if (!mapCanvas) { return; }
+                        if (mapInitialized) {
+                            if (mapInstance && mapInstance.container) {
+                                mapInstance.container.fitToViewport();
+                            }
+                            return;
+                        }
+                        if (!window.ymaps) { return; }
+                        mapInitialized = true;
+                        mapInstance = new window.ymaps.Map(mapCanvas, {
+                            center: [55.751244, 37.618423],
+                            zoom: 10,
+                            controls: []
+                        }, {
+                            suppressMapOpenBlock: true,
+                            suppressObsoleteBrowserNotifier: true,
+                            yandexMapDisablePoiInteractivity: true
+                        });
+
+                        mapInstance.events.add('actionbegin', function () {
+                            liftMarker();
+                        });
+                        mapInstance.events.add('actionend', function () {
+                            handleCenterChange();
+                        });
+
+                        handleCenterChange();
+                    }
+
+                    function liftMarker() {
+                        if (!markerElement) { return; }
+                        markerElement.classList.remove('address-map__marker--landing');
+                        markerElement.classList.add('address-map__marker--lifted');
+                        if (markerLandingTimer) {
+                            clearTimeout(markerLandingTimer);
+                            markerLandingTimer = null;
+                        }
+                    }
+
+                    function landMarker() {
+                        if (!markerElement) { return; }
+                        markerElement.classList.remove('address-map__marker--lifted');
+                        markerElement.classList.add('address-map__marker--landing');
+                        if (markerLandingTimer) {
+                            clearTimeout(markerLandingTimer);
+                        }
+                        markerLandingTimer = setTimeout(function () {
+                            markerElement.classList.remove('address-map__marker--landing');
+                            markerLandingTimer = null;
+                        }, 420);
+                    }
+
+                    function handleCenterChange() {
+                        if (!mapInstance) { return; }
+                        if (centerUpdateTimer) {
+                            clearTimeout(centerUpdateTimer);
+                        }
+                        centerUpdateTimer = setTimeout(function () {
+                            var coords = mapInstance.getCenter();
+                            if (!coords || coords.length !== 2) { return; }
+                            var key = coords[0].toFixed(6) + ',' + coords[1].toFixed(6);
+                            if (key === lastFetchedKey) { return; }
+                            lastFetchedKey = key;
+                            fetchAddress(coords);
+                        }, 250);
+                    }
+
+                    function fetchAddress(coords) {
+                        if (!coords || coords.length !== 2) { return; }
+                        var geocodeUrl = 'https://geocode-maps.yandex.ru/1.x/?format=json&apikey=' + yandexApiKey + '&geocode=' + coords[1] + ',' + coords[0];
+                        selectedAddressValue = '';
+                        selectedCoordinates = null;
+                        updateSaveState();
+                        updateSelection('Определяем адрес...');
+                        landMarker();
+
+                        fetch(geocodeUrl)
+                            .then(function (response) {
+                                if (!response.ok) {
+                                    throw new Error('geocode failed');
+                                }
+                                return response.json();
+                            })
+                            .then(function (data) {
+                                var members = data && data.response && data.response.GeoObjectCollection && data.response.GeoObjectCollection.featureMember;
+                                if (members && members.length) {
+                                    var meta = members[0].GeoObject && members[0].GeoObject.metaDataProperty && members[0].GeoObject.metaDataProperty.GeocoderMetaData;
+                                    var address = meta && meta.text ? meta.text : '';
+                                    if (address) {
+                                        selectedAddressValue = address;
+                                        selectedCoordinates = coords;
+                                        updateSelection(address);
+                                        updateSaveState();
+                                        return;
+                                    }
+                                }
+                                updateSelection('Не удалось определить адрес. Попробуйте переместить карту.');
+                            })
+                            .catch(function () {
+                                updateSelection('Не удалось определить адрес. Попробуйте снова.');
+                            });
+                    }
+
+                    function showSearchPanel() {
+                        if (!searchPanel) { return; }
+                        searchPanel.hidden = false;
+                        searchPanel.classList.add('is-open');
+                        if (searchInput) {
+                            searchInput.value = '';
+                            searchInput.focus();
+                        }
+                        if (resultsBox) {
+                            resultsBox.innerHTML = '';
+                        }
+                    }
+
+                    function hideSearchPanel() {
+                        if (!searchPanel) { return; }
+                        searchPanel.hidden = true;
+                        searchPanel.classList.remove('is-open');
+                    }
+
+                    function renderSearchResults(items) {
+                        if (!resultsBox) { return; }
+                        resultsBox.innerHTML = '';
+                        if (!items || !items.length) {
+                            var empty = doc.createElement('div');
+                            empty.className = 'address-map__result-empty';
+                            empty.textContent = 'Ничего не найдено';
+                            resultsBox.appendChild(empty);
+                            return;
+                        }
+                        for (var i = 0; i < items.length && i < 10; i += 1) {
+                            var item = items[i];
+                            var button = doc.createElement('button');
+                            button.type = 'button';
+                            button.className = 'address-map__result-item';
+                            button.dataset.lat = String(item.lat);
+                            button.dataset.lon = String(item.lon);
+                            button.textContent = item.text;
+                            resultsBox.appendChild(button);
+                        }
+                    }
+
+                    function geocodeQuery(query) {
+                        if (!query) { return; }
+                        var url = 'https://geocode-maps.yandex.ru/1.x/?format=json&apikey=' + yandexApiKey + '&geocode=' + encodeURIComponent(query);
+                        renderSearchResults([{ text: 'Ищем адрес...', lat: 0, lon: 0, isPlaceholder: true }]);
+
+                        fetch(url)
+                            .then(function (response) {
+                                if (!response.ok) {
+                                    throw new Error('geocode failed');
+                                }
+                                return response.json();
+                            })
+                            .then(function (data) {
+                                var members = data && data.response && data.response.GeoObjectCollection && data.response.GeoObjectCollection.featureMember;
+                                if (!members || !members.length) {
+                                    renderSearchResults([]);
+                                    return;
+                                }
+                                var results = [];
+                                for (var i = 0; i < members.length; i += 1) {
+                                    var geo = members[i].GeoObject;
+                                    if (!geo || !geo.Point || !geo.Point.pos) { continue; }
+                                    var pos = String(geo.Point.pos).split(' ');
+                                    if (pos.length !== 2) { continue; }
+                                    var text = '';
+                                    if (geo.metaDataProperty && geo.metaDataProperty.GeocoderMetaData) {
+                                        text = geo.metaDataProperty.GeocoderMetaData.text || '';
+                                    }
+                                    if (!text && geo.name) {
+                                        text = geo.name;
+                                    }
+                                    results.push({
+                                        text: text,
+                                        lon: parseFloat(pos[0]),
+                                        lat: parseFloat(pos[1])
+                                    });
+                                }
+                                renderSearchResults(results);
+                            })
+                            .catch(function () {
+                                renderSearchResults([]);
+                            });
+                    }
+
+                    if (searchToggle) {
+                        searchToggle.addEventListener('click', function () {
+                            showSearchPanel();
+                        });
+                    }
+
+                    if (searchClose) {
+                        searchClose.addEventListener('click', function () {
+                            hideSearchPanel();
+                        });
+                    }
+
+                    if (searchInput) {
+                        searchInput.addEventListener('input', function () {
+                            var value = searchInput.value.trim();
+                            if (debounceTimer) {
+                                clearTimeout(debounceTimer);
+                            }
+                            debounceTimer = setTimeout(function () {
+                                if (value.length >= 3) {
+                                    geocodeQuery(value);
+                                } else {
+                                    if (resultsBox) {
+                                        resultsBox.innerHTML = '';
+                                    }
+                                }
+                            }, 300);
+                        });
+                        searchInput.addEventListener('keydown', function (event) {
+                            if (event.key === 'Enter') {
+                                event.preventDefault();
+                                var value = searchInput.value.trim();
+                                if (value.length >= 3) {
+                                    geocodeQuery(value);
+                                }
+                            } else if (event.key === 'Escape') {
+                                hideSearchPanel();
+                            }
+                        });
+                    }
+
+                    if (resultsBox) {
+                        resultsBox.addEventListener('click', function (event) {
+                            var target = event.target;
+                            if (!(target instanceof Element)) { return; }
+                            if (!target.classList.contains('address-map__result-item')) { return; }
+                            if (!mapInstance) { return; }
+
+                            var lat = parseFloat(target.dataset.lat);
+                            var lon = parseFloat(target.dataset.lon);
+                            if (isNaN(lat) || isNaN(lon)) { return; }
+                            lastFetchedKey = '';
+                            mapInstance.setCenter([lat, lon], Math.max(mapInstance.getZoom(), 15));
+                            hideSearchPanel();
+                        });
+                    }
+
+                    function handleGeoRequest() {
+                        if (!window.ymaps || !mapInstance) { return; }
+                        if (geoBusy) { return; }
+                        geoBusy = true;
+                        if (geoButton) {
+                            geoButton.classList.add('is-loading');
+                        }
+                        window.ymaps.geolocation.get({
+                            provider: 'browser',
+                            autoReverseGeocode: true
+                        }).then(function (result) {
+                            var coords = null;
+                            if (result && result.geoObjects) {
+                                if (typeof result.geoObjects.position !== 'undefined') {
+                                    coords = result.geoObjects.position;
+                                } else if (result.geoObjects.get(0)) {
+                                    coords = result.geoObjects.get(0).geometry.getCoordinates();
+                                }
+                            }
+                            if (coords && coords.length === 2) {
+                                lastFetchedKey = '';
+                                mapInstance.setCenter(coords, Math.max(mapInstance.getZoom(), 15));
+                            } else {
+                                updateSelection('Не удалось определить местоположение. Введите адрес вручную.');
+                            }
+                        }).catch(function () {
+                            updateSelection('Не удалось определить местоположение. Введите адрес вручную.');
+                        }).finally(function () {
+                            geoBusy = false;
+                            if (geoButton) {
+                                geoButton.classList.remove('is-loading');
+                            }
+                        });
+                    }
+
+                    if (geoButton) {
+                        geoButton.addEventListener('click', function () {
+                            if (!mapInitialized) {
+                                showMap();
+                            }
+                            handleGeoRequest();
+                        });
+                    }
+
+                    if (saveButton) {
+                        saveButton.addEventListener('click', function () {
+                            if (!selectedAddressValue) { return; }
+                            saveButton.disabled = true;
+                            saveButton.textContent = 'Сохраняем...';
+
+                            fetch('/address-book/save', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ address: selectedAddressValue })
+                            }).then(function (response) {
+                                if (!response.ok) {
+                                    throw new Error('save failed');
+                                }
+                                return response.json();
+                            }).then(function (payload) {
+                                saveButton.textContent = 'Сохранить адрес';
+                                selectedAddressValue = '';
+                                selectedCoordinates = null;
+                                updateSaveState();
+                                if (payload && payload.address && payload.id) {
+                                    appendAddressCard({
+                                        id: payload.id,
+                                        address: payload.address
+                                    });
+                                }
+                                if (redirectAfterSave) {
+                                    window.location.href = '/simplecheckout';
+                                } else {
+                                    saveButton.disabled = true;
+                                    updateSelection('');
+                                    hideMap();
+                                }
+                            }).catch(function () {
+                                saveButton.disabled = false;
+                                saveButton.textContent = 'Сохранить адрес';
+                                window.alert('Не удалось сохранить адрес. Попробуйте снова.');
+                            });
+                        });
+                    }
+
+                    function appendAddressCard(data) {
+                        if (!data || !listContainer) { return; }
+                        var card = doc.createElement('div');
+                        card.className = 'address-card';
+                        card.setAttribute('data-address-item', '');
+                        card.setAttribute('data-address-id', String(data.id));
+                        card.setAttribute('data-address-value', data.address || '');
+
+                        var selectButton = doc.createElement('button');
+                        selectButton.type = 'button';
+                        selectButton.className = 'address-card__select';
+                        selectButton.setAttribute('data-address-select', '');
+                        selectButton.textContent = data.address || '';
+
+                        var deleteButton = doc.createElement('button');
+                        deleteButton.type = 'button';
+                        deleteButton.className = 'address-card__delete';
+                        deleteButton.setAttribute('data-address-delete', '');
+                        deleteButton.setAttribute('aria-label', 'Удалить адрес');
+                        deleteButton.innerHTML = '<span>Удалить</span>';
+
+                        card.appendChild(selectButton);
+                        card.appendChild(deleteButton);
+                        listContainer.prepend(card);
+                        toggleEmptyState();
+                    }
+
+                    if (listContainer) {
+                        listContainer.addEventListener('click', function (event) {
+                            var target = event.target;
+                            if (!(target instanceof Element)) { return; }
+                            var select = target.closest('[data-address-select]');
+                            if (select) {
+                                var wrapper = select.closest('[data-address-item]');
+                                if (!wrapper) { return; }
+                                var id = wrapper.getAttribute('data-address-id');
+                                if (!id) { return; }
+                                selectStoredAddress(wrapper, id);
+                                return;
+                            }
+                            var deleteBtn = target.closest('[data-address-delete]');
+                            if (!deleteBtn) { return; }
+                            var card = deleteBtn.closest('[data-address-item]');
+                            if (!card) { return; }
+                            var id = card.getAttribute('data-address-id');
+                            if (!id) { return; }
+
+                            deleteBtn.disabled = true;
+
+                            fetch('/address-book/' + encodeURIComponent(id), {
+                                method: 'DELETE'
+                            }).then(function (response) {
+                                if (!response.ok && response.status !== 404) {
+                                    throw new Error('delete failed');
+                                }
+                                card.remove();
+                                toggleEmptyState();
+                            }).catch(function () {
+                                deleteBtn.disabled = false;
+                                window.alert('Не удалось удалить адрес. Попробуйте снова.');
+                            });
+                        });
+                    }
+
+                    function selectStoredAddress(card, id) {
+                        if (!card || !id) { return; }
+                        card.classList.add('address-card--active');
+                        fetch('/address-book/select', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ address_id: parseInt(id, 10) || 0 })
+                        }).then(function (response) {
+                            if (!response.ok) {
+                                throw new Error('select failed');
+                            }
+                            return response.json();
+                        }).then(function () {
+                            window.location.href = '/simplecheckout';
+                        }).catch(function () {
+                            card.classList.remove('address-card--active');
+                            window.alert('Не удалось выбрать адрес. Попробуйте снова.');
+                        });
+                    }
+
+                    doc.addEventListener('keydown', function (event) {
+                        if (event.key === 'Escape' && searchPanel && !searchPanel.hidden) {
+                            hideSearchPanel();
+                        } else if (event.key === 'Escape' && mapWrapper && mapOpened) {
+                            hideMap();
+                        }
+                    });
+                })();
+            </script>
+        </body>
+    </html>
+}

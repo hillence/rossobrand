@@ -1,0 +1,670 @@
+package templates
+
+import (
+    "fmt"
+    "gogo/database"
+    "strconv"
+    "strings"
+)
+
+templ SimpleCheckout(user *database.User, address string, items []*database.CartItem, cartCountLabel string, cartTotal string, isAuthenticated bool) {
+    <html>
+        <head>
+            <title>Оформление заказа</title>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <link rel="stylesheet" href="/static/style.css"/>
+            <script src="/static/htmx.min.js"></script>
+        </head>
+        <body>
+            @Header(isAuthenticated, false)
+            <main class="simple-checkout" data-user-address={ address }>
+                <div class="container">
+                    <section class="simple-checkout__section">
+                        <div class="simple-checkout__layout">
+                            <div class="simple-checkout__main">
+                                <header class="simple-checkout__header">
+                            <div class="simple-checkout__header-row">
+                                <h1 class="simple-checkout__title">выберите способ доставки</h1>
+                            </div>
+                            if address != "" {
+                                <p class="simple-checkout__address">доставка по адресу <strong>{address}</strong></p>
+                            }
+                        </header>
+                        <div class="simple-checkout__options">
+                            <button type="button" class="delivery-option" data-delivery="pickup" data-delivery-label="Пункт выдачи" aria-pressed="false">
+                                <span class="delivery-option__label">пункт выдачи</span>
+                                <span class="delivery-option__price">0 RUB</span>
+                            </button>
+                            <button type="button" class="delivery-option" data-delivery="courier" data-delivery-label="Курьер" aria-pressed="false">
+                                <span class="delivery-option__label">курьер</span>
+                                <span class="delivery-option__price">0 RUB</span>
+                            </button>
+                            <button type="button" class="delivery-option" data-delivery="post" data-delivery-label="Почта России" aria-pressed="false">
+                                <span class="delivery-option__label">почта россии</span>
+                                <span class="delivery-option__price">0 RUB</span>
+                            </button>
+                        </div>
+                        <div class="simple-checkout__content">
+                            <div class="simple-checkout__forms">
+                                <h2 class="simple-checkout__forms-title">заполните личные данные</h2>
+                                <form class="delivery-form delivery-form--pickup" data-delivery-form="pickup" hidden>
+                                    <div class="delivery-form__grid">
+                                        <div class="form-field">
+                                            <label class="form-label" for="pickup-point">пункт выдачи</label>
+                                            <button type="button" class="delivery-form__selector" id="pickup-point">выбрать пункт выдачи</button>
+                                            <input type="hidden" id="pickup-point-value" data-pickup-value/>
+                                            <p class="delivery-form__hint" data-pickup-selected>пункт выдачи не выбран</p>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="pickup-phone">телефон</label>
+                                            <input class="form-input" id="pickup-phone" type="tel" placeholder="+7 (___) ___-__-__"/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="pickup-first-name">имя</label>
+                                            <input class="form-input" id="pickup-first-name" type="text" placeholder="Введите имя" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.FirstName)
+                                            }() } readonly/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="pickup-last-name">фамилия</label>
+                                            <input class="form-input" id="pickup-last-name" type="text" placeholder="Введите фамилию" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.LastName)
+                                            }() } readonly/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="pickup-email">почта</label>
+                                            <input class="form-input" id="pickup-email" type="email" placeholder="Введите email" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.Email)
+                                            }() } readonly/>
+                                        </div>
+                                    </div>
+                                </form>
+                                <form class="delivery-form delivery-form--courier" data-delivery-form="courier" hidden>
+                                    <div class="delivery-form__grid">
+                                        <div class="form-field form-field--full">
+                                            <label class="form-label" for="courier-address">Адрес доставки</label>
+                                            <input class="form-input" id="courier-address" type="text" value={ address } placeholder="Введите адрес"/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="courier-index">Индекс</label>
+                                            <input class="form-input" id="courier-index" type="text" placeholder="Индекс"/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="courier-apartment">Квартира / офис</label>
+                                            <input class="form-input" id="courier-apartment" type="text" placeholder="Например, 12"/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="courier-entrance">Подъезд</label>
+                                            <input class="form-input" id="courier-entrance" type="text" placeholder="Подъезд"/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="courier-floor">Этаж</label>
+                                            <input class="form-input" id="courier-floor" type="text" placeholder="Этаж"/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="courier-intercom">Домофон</label>
+                                            <input class="form-input" id="courier-intercom" type="text" placeholder="Код домофона"/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="courier-phone">Телефон</label>
+                                            <input class="form-input" id="courier-phone" type="tel" placeholder="+7 (___) ___-__-__"/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="courier-first-name">Имя</label>
+                                            <input class="form-input" id="courier-first-name" type="text" placeholder="Введите имя" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.FirstName)
+                                            }() } readonly/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="courier-last-name">Фамилия</label>
+                                            <input class="form-input" id="courier-last-name" type="text" placeholder="Введите фамилию" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.LastName)
+                                            }() } readonly/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="courier-email">Email</label>
+                                            <input class="form-input" id="courier-email" type="email" placeholder="Введите email" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.Email)
+                                            }() } readonly/>
+                                        </div>
+                                    </div>
+                                </form>
+                                <form class="delivery-form delivery-form--post" data-delivery-form="post" hidden>
+                                    <div class="delivery-form__grid">
+                                        <div class="form-field form-field--full">
+                                            <label class="form-label" for="post-address">Адрес доставки</label>
+                                            <input class="form-input" id="post-address" type="text" value={ address } placeholder="Введите адрес"/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="post-index">Индекс</label>
+                                            <input class="form-input" id="post-index" type="text" placeholder="Индекс"/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="post-phone">Телефон</label>
+                                            <input class="form-input" id="post-phone" type="tel" placeholder="+7 (___) ___-__-__"/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="post-first-name">Имя</label>
+                                            <input class="form-input" id="post-first-name" type="text" placeholder="Введите имя" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.FirstName)
+                                            }() } readonly/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="post-last-name">Фамилия</label>
+                                            <input class="form-input" id="post-last-name" type="text" placeholder="Введите фамилию" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.LastName)
+                                            }() } readonly/>
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label" for="post-email">Email</label>
+                                            <input class="form-input" id="post-email" type="email" placeholder="Введите email" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.Email)
+                                            }() } readonly/>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <aside class="simple-checkout__summary">
+                                <form class="order-summary" method="post" action="/orders/create" data-order-submit-form>
+                                    <h2 class="order-summary__title">ваш заказ:</h2>
+                                    <p class="order-summary__meta">всего — <span data-summary-count>{ cartCountLabel }</span></p>
+                                    <div class="order-summary__items">
+                                        if len(items) == 0 {
+                                            <p class="order-summary__empty">в корзине нет товаров.</p>
+                                        } else {
+                                            for _, item := range items {
+                                                if item != nil && item.Product != nil {
+                                                    <div class="order-summary__item">
+                                                        <div class="order-summary__item-thumb">
+                                                            if image := item.Product.PrimaryImage(); image != "" {
+                                                                <img src={ image } alt={ item.Product.Name }/>
+                                                            } else {
+                                                                <div class="order-summary__item-placeholder" aria-hidden="true"></div>
+                                                            }
+                                                        </div>
+                                                        <div class="order-summary__item-body">
+                                                            <div class="order-summary__item-row">
+                                                                <p class="order-summary__item-name">{ item.Product.Name }</p>
+                                                                <p class="order-summary__item-price">{ func() string {
+                                                                    value := strings.TrimRight(strings.TrimRight(strconv.FormatFloat(item.Product.Price, 'f', 2, 64), "0"), ".")
+                                                                    if value == "" {
+                                                                        value = "0"
+                                                                    }
+                                                                    return fmt.Sprintf("%s RUB", value)
+                                                                }() }</p>
+                                                            </div>
+                                                            <p class="order-summary__item-qty">количество: { fmt.Sprintf("%d шт.", item.Quantity) }</p>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            }
+                                        }
+                                    </div>
+                                    <div class="order-summary__promo">
+                                        <label class="order-summary__promo-label" for="order-promo">промокод:</label>
+                                        <div class="order-summary__promo-row">
+                                            <input id="order-promo" class="order-summary__promo-input" type="text" placeholder="Введите промокод"/>
+                                            <button type="button" class="order-summary__promo-apply">применить</button>
+                                        </div>
+                                    </div>
+                                    <div class="order-summary__totals">
+                                    <div class="order-summary__line">
+                                        <span>товары:</span>
+                                        <span data-summary-amount>{ fmt.Sprintf("%s RUB", cartTotal) }</span>
+                                    </div>
+                                    <div class="order-summary__line order-summary__line--grand">
+                                        <span>итого:</span>
+                                        <span data-summary-total>{ fmt.Sprintf("%s RUB", cartTotal) }</span>
+                                    </div>
+                                </div>
+                                    <input type="hidden" name="delivery_type" value="pickup" data-delivery-type-input/>
+                                    <input type="hidden" name="pickup_point" data-pickup-submit-value/>
+                                    <button type="submit" class="order-summary__submit">оформить заказ</button>
+                                </form>
+                            </aside>
+                        </div>
+                    </section>
+                </div>
+            </main>
+            @Banner()
+            <div class="pickup-map" data-pickup-map hidden aria-hidden="true">
+                <div class="pickup-map__backdrop" data-pickup-map-close aria-hidden="true"></div>
+                <div class="pickup-map__dialog" role="dialog" aria-modal="true">
+                    <button type="button" class="pickup-map__close" data-pickup-map-close aria-label="Закрыть карту">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <div class="pickup-map__canvas" data-pickup-map-canvas></div>
+                </div>
+            </div>
+            <script>
+                (function () {
+                    var doc = document;
+                    var body = doc.body;
+                    var deliveryButtons = doc.querySelectorAll('[data-delivery]');
+                    var deliveryForms = doc.querySelectorAll('[data-delivery-form]');
+                    var deliveryTypeInput = doc.querySelector('[data-delivery-type-input]');
+                    var pickupTrigger = doc.querySelector('#pickup-point');
+                    var pickupTriggerDefault = pickupTrigger ? pickupTrigger.textContent : '';
+                    var pickupValueField = doc.querySelector('[data-pickup-value]');
+                    var pickupSubmitInput = doc.querySelector('[data-pickup-submit-value]');
+                    var pickupSelectedText = doc.querySelector('[data-pickup-selected]');
+                    var pickupSelectedDefault = pickupSelectedText ? pickupSelectedText.textContent : '';
+                    var orderForm = doc.querySelector('[data-order-submit-form]');
+                    var mapOverlay = doc.querySelector('[data-pickup-map]');
+                    var mapCanvas = doc.querySelector('[data-pickup-map-canvas]');
+                    var mapCloseElements = doc.querySelectorAll('[data-pickup-map-close]');
+                    var mapScriptLoading = false;
+                    var mapInstance = null;
+                    var objectManager = null;
+                    var allPickupPoints = null;
+                    var filteredPickupFeatures = [];
+                    var selectedPointId = null;
+                    var defaultCenter = [55.751244, 37.618423];
+                    var defaultZoom = 4.5;
+                    var modalClass = 'body--modal-open';
+                    var checkoutRoot = doc.querySelector('.simple-checkout');
+                    var userAddress = checkoutRoot ? checkoutRoot.getAttribute('data-user-address') || '' : '';
+                    var userCity = '';
+                    var normalizedUserCity = '';
+                    var yandexApiKey = '5d0f0a04-cea3-40ff-940e-5a97428fad05';
+
+                    function activate(type) {
+                        var hasMatch = false;
+                        deliveryButtons.forEach(function (button) {
+                            var isActive = button.dataset.delivery === type;
+                            button.classList.toggle('delivery-option--active', isActive);
+                            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                            if (isActive) {
+                                hasMatch = true;
+                            }
+                        });
+                        deliveryForms.forEach(function (form) {
+                            if (form.dataset.deliveryForm === type) {
+                                form.hidden = false;
+                            } else {
+                                form.hidden = true;
+                            }
+                        });
+                        if (deliveryTypeInput) {
+                            deliveryTypeInput.value = type;
+                        }
+                        if (!hasMatch && deliveryButtons.length) {
+                            activate(deliveryButtons[0].dataset.delivery);
+                        }
+                    }
+
+                    deliveryButtons.forEach(function (button) {
+                        button.addEventListener('click', function () {
+                            activate(button.dataset.delivery);
+                        });
+                    });
+
+                    if (deliveryButtons.length) {
+                        activate(deliveryButtons[0].dataset.delivery);
+                    }
+
+                    function normalizeCityName(value) {
+                        if (value == null) { return ''; }
+                        var text = String(value).trim().toLowerCase();
+                        if (!text) { return ''; }
+                        text = text.replace(/^г\.\s*/, '');
+                        text = text.replace(/^город\s+/, '');
+                        text = text.replace(/^р\.п\.\s*/, '');
+                        text = text.replace(/^пос\.\s*/, '');
+                        return text.replace(/\s+/g, ' ').trim();
+                    }
+
+                    function extractCityFromAddress(addressValue) {
+                        if (!addressValue) { return ''; }
+                        var value = String(addressValue).trim();
+                        if (!value) { return ''; }
+                        var match = value.match(/(?:г\.|город)\s*([A-Za-zА-Яа-яЁё\-\s]+)/i);
+                        if (match && match[1]) {
+                            return match[1].trim();
+                        }
+                        var parts = value.split(',').map(function (part) {
+                            return part.trim();
+                        }).filter(function (part) {
+                            return part.length > 0;
+                        });
+                        if (!parts.length) { return ''; }
+                        for (var i = 0; i < parts.length; i += 1) {
+                            var segment = parts[i];
+                            var lower = segment.toLowerCase();
+                            if (lower.indexOf('россия') !== -1) { continue; }
+                            if (lower.indexOf('обл') !== -1 || lower.indexOf('край') !== -1 || lower.indexOf('респ') !== -1) { continue; }
+                            if (lower.indexOf('район') !== -1) { continue; }
+                            return segment.replace(/^г\.\s*/i, '').replace(/^город\s+/i, '').trim();
+                        }
+                        return parts[0].replace(/^г\.\s*/i, '').replace(/^город\s+/i, '').trim();
+                    }
+
+                    function filterFeaturesByCity(features) {
+                        if (!Array.isArray(features)) { return []; }
+                        if (!normalizedUserCity) {
+                            return features.slice();
+                        }
+                        var matches = [];
+                        for (var i = 0; i < features.length; i += 1) {
+                            var feature = features[i];
+                            if (!feature || !feature.properties) { continue; }
+                            var props = feature.properties;
+                            var featureCity = props.city || props.settlement || '';
+                            if (!featureCity && props.address) {
+                                featureCity = props.address.split(',')[0];
+                            } else if (!featureCity && props.hintContent) {
+                                featureCity = props.hintContent.split(',')[0];
+                            }
+                            var normalized = normalizeCityName(featureCity);
+                            if (normalized && normalized === normalizedUserCity) {
+                                matches.push(feature);
+                            }
+                        }
+                        return matches.length ? matches : features.slice();
+                    }
+
+                    userCity = extractCityFromAddress(userAddress);
+                    normalizedUserCity = normalizeCityName(userCity);
+
+                    function ensureYandexMaps(callback) {
+                        if (window.ymaps && typeof window.ymaps.ready === 'function') {
+                            window.ymaps.ready(function () {
+                                callback(window.ymaps);
+                            });
+                            return;
+                        }
+                        if (mapScriptLoading) {
+                            doc.addEventListener('pickup-map-loaded', function onReady() {
+                                doc.removeEventListener('pickup-map-loaded', onReady);
+                                ensureYandexMaps(callback);
+                            });
+                            return;
+                        }
+                        mapScriptLoading = true;
+                        var script = doc.createElement('script');
+                        var scriptSrc = 'https://api-maps.yandex.ru/2.1/?';
+                        if (yandexApiKey) {
+                            scriptSrc += 'apikey=' + encodeURIComponent(yandexApiKey) + '&';
+                        }
+                        scriptSrc += 'lang=ru_RU';
+                        script.src = scriptSrc;
+                        script.async = true;
+                        script.onload = function () {
+                            mapScriptLoading = false;
+                            doc.dispatchEvent(new Event('pickup-map-loaded'));
+                            ensureYandexMaps(callback);
+                        };
+                        script.onerror = function () {
+                            mapScriptLoading = false;
+                            console.error('Не удалось загрузить Yandex Maps');
+                        };
+                        doc.head.appendChild(script);
+                    }
+
+                    function ensurePickupPoints(callback) {
+                        if (allPickupPoints) {
+                            callback(allPickupPoints);
+                            return;
+                        }
+                        fetch('/static/5post-points.json', { credentials: 'same-origin' })
+                            .then(function (response) {
+                                if (!response.ok) {
+                                    throw new Error('failed to load points');
+                                }
+                                return response.json();
+                            })
+                            .then(function (points) {
+                                allPickupPoints = points;
+                                filteredPickupFeatures = [];
+                                callback(points);
+                            })
+                            .catch(function (error) {
+                                console.error(error);
+                                callback(null);
+                            });
+                    }
+
+                    function initializeMap() {
+                        if (!mapCanvas || !window.ymaps) {
+                            return Promise.resolve(null);
+                        }
+                        if (mapInstance) {
+                            if (mapInstance.container) {
+                                mapInstance.container.fitToViewport();
+                            }
+                            return Promise.resolve(mapInstance);
+                        }
+                        mapInstance = new window.ymaps.Map(mapCanvas, {
+                            center: defaultCenter,
+                            zoom: defaultZoom,
+                            controls: ['zoomControl', 'geolocationControl']
+                        });
+                        objectManager = new window.ymaps.ObjectManager({
+                            clusterize: true,
+                            gridSize: 64,
+                            clusterDisableClickZoom: false
+                        });
+                        mapInstance.geoObjects.add(objectManager);
+                        objectManager.objects.events.add('click', function (event) {
+                            var objectId = event.get('objectId');
+                            if (objectId !== undefined && objectId !== null) {
+                                focusPointById(objectId, true);
+                            }
+                        });
+                        return Promise.resolve(mapInstance);
+                    }
+
+                    function renderPickupPoints(features) {
+                        if (!objectManager || !mapInstance) { return; }
+                        var prepared = filterFeaturesByCity(features || []);
+                        filteredPickupFeatures = prepared.slice();
+                        objectManager.removeAll();
+                        if (!prepared.length) {
+                            selectedPointId = null;
+                            updateSelectionDisplay(null);
+                            if (pickupSelectedText) {
+                                var message = userCity
+                                    ? ('Пункты выдачи 5post недоступны в городе ' + userCity)
+                                    : 'Пункты выдачи 5post временно недоступны';
+                                pickupSelectedText.textContent = message;
+                                pickupSelectedText.classList.add('delivery-form__hint--error');
+                            }
+                            mapInstance.setCenter(defaultCenter, defaultZoom);
+                            return;
+                        }
+                        var collection = {
+                            type: 'FeatureCollection',
+                            features: prepared
+                        };
+                        objectManager.add(collection);
+                        if (window.ymaps && window.ymaps.geoQuery) {
+                            var bounds = window.ymaps.geoQuery(collection).getBounds();
+                            if (bounds) {
+                                mapInstance.setBounds(bounds, { checkZoomRange: true, zoomMargin: 40 });
+                                return;
+                            }
+                        }
+                        var first = prepared[0];
+                        if (first && first.geometry && Array.isArray(first.geometry.coordinates)) {
+                            mapInstance.setCenter(first.geometry.coordinates, 12);
+                        }
+                    }
+
+                    function formatPointLabel(feature) {
+                        if (!feature || !feature.properties) { return 'Пункт выдачи'; }
+                        var city = feature.properties.city || '';
+                        var address = feature.properties.address || feature.properties.hintContent || feature.properties.balloonContentBody || feature.properties.balloonContentHeader || '';
+                        if (address && city && address.indexOf(city) === -1) {
+                            return city + ', ' + address;
+                        }
+                        return address || city || 'Пункт выдачи';
+                    }
+
+                    function updateSelectionDisplay(feature) {
+                        var label = feature ? formatPointLabel(feature) : '';
+                        if (pickupTrigger) {
+                            pickupTrigger.textContent = label ? ('Выбрано: ' + label) : pickupTriggerDefault;
+                        }
+                        if (pickupSelectedText) {
+                            pickupSelectedText.textContent = label ? label : pickupSelectedDefault;
+                            pickupSelectedText.classList.remove('delivery-form__hint--error');
+                        }
+                        if (pickupValueField) {
+                            pickupValueField.value = label;
+                        }
+                        if (pickupSubmitInput) {
+                            pickupSubmitInput.value = label;
+                        }
+                    }
+
+                    function clearSelectedPoint(messageIsError) {
+                        selectedPointId = null;
+                        updateSelectionDisplay(null);
+                        if (messageIsError && pickupSelectedText) {
+                            pickupSelectedText.textContent = 'Выберите пункт выдачи, чтобы продолжить оформление заказа';
+                            pickupSelectedText.classList.add('delivery-form__hint--error');
+                        }
+                    }
+
+                    function selectPoint(feature, options) {
+                        if (!feature) { return; }
+                        selectedPointId = feature.id;
+                        updateSelectionDisplay(feature);
+                        if (mapInstance && feature.geometry && Array.isArray(feature.geometry.coordinates)) {
+                            mapInstance.setCenter(feature.geometry.coordinates, 13);
+                        }
+                        if (objectManager && !(options && options.fromMap)) {
+                            objectManager.objects.balloon.open(feature.id);
+                        }
+                        if (options && options.fromMap) {
+                            closeMapOverlay();
+                        }
+                    }
+
+                    function findFeatureById(id) {
+                        var target = String(id);
+                        var pools = [];
+                        if (Array.isArray(filteredPickupFeatures) && filteredPickupFeatures.length) {
+                            pools.push(filteredPickupFeatures);
+                        }
+                        if (allPickupPoints && Array.isArray(allPickupPoints.features)) {
+                            pools.push(allPickupPoints.features);
+                        }
+                        for (var p = 0; p < pools.length; p += 1) {
+                            var list = pools[p];
+                            if (!Array.isArray(list)) { continue; }
+                            for (var i = 0; i < list.length; i += 1) {
+                                if (String(list[i].id) === target) {
+                                    return list[i];
+                                }
+                            }
+                        }
+                        return null;
+                    }
+
+                    function focusPointById(id, fromMap) {
+                        var feature = findFeatureById(id);
+                        if (!feature) { return; }
+                        selectPoint(feature, fromMap ? { fromMap: true } : null);
+                        if (objectManager && !fromMap) {
+                            objectManager.objects.balloon.open(feature.id);
+                        }
+                    }
+
+                    function openMapOverlay() {
+                        if (!mapOverlay) { return; }
+                        mapOverlay.hidden = false;
+                        mapOverlay.setAttribute('aria-hidden', 'false');
+                        body.classList.add(modalClass);
+                        ensureYandexMaps(function () {
+                            ensurePickupPoints(function (points) {
+                                if (!points) { return; }
+                                initializeMap().then(function () {
+                                    var features = (points && Array.isArray(points.features)) ? points.features : [];
+                                    renderPickupPoints(features);
+                                    if (selectedPointId != null) {
+                                        focusPointById(selectedPointId, false);
+                                    }
+                                    if (mapInstance && mapInstance.container) {
+                                        mapInstance.container.fitToViewport();
+                                    }
+                                });
+                            });
+                        });
+                    }
+
+                    function closeMapOverlay() {
+                        if (!mapOverlay) { return; }
+                        mapOverlay.hidden = true;
+                        mapOverlay.setAttribute('aria-hidden', 'true');
+                        body.classList.remove(modalClass);
+                    }
+
+                    if (pickupTrigger) {
+                        pickupTrigger.addEventListener('click', function (event) {
+                            event.preventDefault();
+                            openMapOverlay();
+                        });
+                    }
+
+                    if (mapCloseElements.length && mapOverlay) {
+                        mapCloseElements.forEach(function (element) {
+                            element.addEventListener('click', function (event) {
+                                event.preventDefault();
+                                closeMapOverlay();
+                            });
+                        });
+                        doc.addEventListener('keydown', function (event) {
+                            if (event.key === 'Escape' && !mapOverlay.hidden) {
+                                closeMapOverlay();
+                            }
+                        });
+                    }
+
+                    if (orderForm) {
+                        orderForm.addEventListener('submit', function (event) {
+                            var type = deliveryTypeInput ? deliveryTypeInput.value : '';
+                            if (type === 'pickup' && (!pickupSubmitInput || !pickupSubmitInput.value)) {
+                                event.preventDefault();
+                                clearSelectedPoint(true);
+                                if (pickupTrigger) {
+                                    pickupTrigger.focus();
+                                }
+                            }
+                        });
+                    }
+                })();
+            </script>
+        </body>
+    </html>
+}

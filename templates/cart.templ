@@ -1,0 +1,114 @@
+package templates
+
+import (
+	"fmt"
+	"gogo/database"
+	"strconv"
+)
+
+templ Cart(items []*database.CartItem, total float64, isAuthenticated bool) {
+    <html>
+        <head>
+            <title>корзина</title>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <link rel="stylesheet" href="/static/style.css"/>
+            <script src="/static/htmx.min.js"></script>
+        </head>
+        <body>
+            @Header(isAuthenticated, false)
+            <main class="cart">
+                <div class="container">
+                    <section class="cart__section" data-cart-section>
+                        <header class="cart__header">
+                            <h1 class="cart__title">корзина</h1>
+                        </header>
+                        <div class="cart__layout">
+                            <div class="cart__main">
+                                <div class="cart__empty" data-cart-empty style={ map[bool]string{true: "", false: "display:none;"}[len(items) == 0] }>
+                                    <p class="cart__empty-text">ваша корзина пока пуста.</p>
+                                    <a class="btn-primary cart__return" href="/">продолжить покупки</a>
+                                </div>
+                                <div class="cart__items" data-cart-items style={ map[bool]string{true: "", false: "display:none;"}[len(items) > 0] }>
+                                    for _, item := range items {
+                                        if item.Product != nil {
+                                            <article class="cart-item" data-cart-item data-product-id={ fmt.Sprintf("%d", item.Product.ID) } data-cart-size={ item.Size } data-product-price={ strconv.FormatFloat(item.Product.Price, 'f', 2, 64) }>
+                                                <a class="cart-item__image-link" href={ fmt.Sprintf("/products/%d", item.Product.ID) } aria-label={ item.Product.Name }>
+                                                    if image := item.Product.PrimaryImage(); image != "" {
+                                                        <img src={ image } alt={ item.Product.Name } class="cart-item__image"/>
+                                                    } else {
+                                                        <div class="cart-item__image cart-item__image--placeholder" aria-hidden="true"></div>
+                                                    }
+                                                </a>
+                                                <div class="cart-item__content">
+                                                    <div class="cart-item__info">
+                                                        <a class="cart-item__title-link" href={ fmt.Sprintf("/products/%d", item.Product.ID) }>
+                                                            <h2 class="cart-item__title">{ item.Product.Name }</h2>
+                                                        </a>
+                                                        <p class="cart-item__price">{ fmt.Sprintf("%s ₽", strconv.FormatFloat(item.Product.Price, 'f', 2, 64)) }</p>
+                                                        <div class="cart-item__meta">
+                                                            if item.Size != "" {
+                                                                <span class="cart-item__size" data-cart-item-size>{ item.Size }</span>
+                                                            }
+                                                            <div class="cart-item__quantity-control" data-cart-quantity>
+                                                                <button type="button" class="cart-item__quantity-button" data-cart-decrement data-product-id={ fmt.Sprintf("%d", item.Product.ID) } data-cart-size={ item.Size } aria-label="Уменьшить количество">
+                                                                    <span aria-hidden="true">−</span>
+                                                                </button>
+                                                                <span class="cart-item__quantity-value" data-cart-quantity-value>{ fmt.Sprintf("%d", item.Quantity) }</span>
+                                                                <button type="button" class="cart-item__quantity-button" data-cart-increment data-product-id={ fmt.Sprintf("%d", item.Product.ID) } data-cart-size={ item.Size } aria-label="Увеличить количество">
+                                                                    <span aria-hidden="true">+</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    <p class="cart-item__sum">
+                                                        сумма:
+                                                        <span data-cart-item-sum>{ fmt.Sprintf("%s ₽", strconv.FormatFloat(item.Product.Price*float64(item.Quantity), 'f', 2, 64)) }</span>
+                                                    </p>
+                                                </div>
+                                                <div class="cart-item__actions">
+                                                    <button type="button" class="text-button cart-item__remove" data-cart-remove data-product-id={ fmt.Sprintf("%d", item.Product.ID) } data-cart-size={ item.Size } aria-label="Удалить из корзины">
+                                                        <svg class="cart-item__remove-icon" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
+                                                            <path d="M20 10V9.2C20 8.0799 20 7.51984 19.782 7.09202C19.5903 6.71569 19.2843 6.40973 18.908 6.21799C18.4802 6 17.9201 6 16.8 6H15.2C14.0799 6 13.5198 6 13.092 6.21799C12.7157 6.40973 12.4097 6.71569 12.218 7.09202C12 7.51984 12 8.0799 12 9.2V10M14 15.5V20.5M18 15.5V20.5M7 10H25M23 10V21.2C23 22.8802 23 23.7202 22.673 24.362C22.3854 24.9265 21.9265 25.3854 21.362 25.673C20.7202 26 19.8802 26 18.2 26H13.8C12.1198 26 11.2798 26 10.638 25.673C10.0735 25.3854 9.6146 24.9265 9.32698 24.362C9 23.7202 9 22.8802 9 21.2V10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                                        </svg>
+                                                        <span class="sr-only">удалить</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    }
+                                }
+                                </div>
+                            </div>
+                            <aside class="cart-summary" data-cart-summary style={ map[bool]string{true: "", false: "display:none;"}[len(items) > 0] }>
+                                <div class="cart-summary__line">
+                                    <span class="cart-summary__label">итого</span>
+                                    <span class="cart-summary__value" data-cart-total>{ fmt.Sprintf("%s ₽", strconv.FormatFloat(total, 'f', 2, 64)) }</span>
+                                </div>
+                                <div class="cart-summary__line cart-summary__line--items">
+                                    <span class="cart-summary__value" data-cart-total>{ fmt.Sprintf("%s ₽", strconv.FormatFloat(total, 'f', 2, 64)) }</span>
+                                    <span class="cart-summary__label cart-summary__label--items">
+                                        товары — <span data-cart-count>{ fmt.Sprintf("%d шт.", func() int {
+                                            sum := 0
+                                            for _, item := range items {
+                                                if item != nil && item.Product != nil {
+                                                    sum += item.Quantity
+                                                }
+                                            }
+                                            return sum
+                                        }()) }</span>
+                                    </span>
+                                </div>
+                                <div class="cart-summary__promo">
+                                    <input class="cart-summary__input" type="text" placeholder="Промокод" aria-label="Введите промокод"/>
+                                    <button type="button" class="cart-summary__apply">применить</button>
+                                </div>
+                                <a href="/checkout/address" class="cart-summary__checkout">оформить заказ</a>
+                            </aside>
+                        </div>
+                    </section>
+                </div>
+            </main>
+            @Banner()
+        </body>
+    </html>
+}

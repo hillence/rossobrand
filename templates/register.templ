@@ -1,0 +1,55 @@
+package templates
+
+templ Register() {
+    <html>
+        <head>
+            <title>Register</title>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <link rel="stylesheet" href="/static/style.css"/>
+            <script src="/static/htmx.min.js"></script>
+        </head>
+        <body>
+            <div class="auth-page">
+                <div class="auth-card">
+                    <form method="post" action="/register">
+                        <div class="form-fields">
+                            <div class="form-field">
+                                <label class="form-label" for="first_name">
+                                    Имя
+                                </label>
+                                <input class="form-input" id="first_name" name="first_name" type="text" placeholder="Ваше имя" autocomplete="given-name" required/>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label" for="last_name">
+                                    Фамилия
+                                </label>
+                                <input class="form-input" id="last_name" name="last_name" type="text" placeholder="Ваша фамилия" autocomplete="family-name" required/>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label" for="email">
+                                    Email
+                                </label>
+                                <input class="form-input" id="email" name="email" type="email" placeholder="Email" autocomplete="email" required/>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label" for="password">
+                                    Password
+                                </label>
+                                <input class="form-input" id="password" name="password" type="password" placeholder="••••••••" required/>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" type="submit">
+                                Register
+                            </button>
+                            <a class="link-subtle" href="/login">
+                                Login
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </body>
+    </html>
+}

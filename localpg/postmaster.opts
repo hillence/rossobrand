@@ -1,0 +1,1 @@
+/usr/bin/postgres "-D" "/home/hillence/Загрузки/gogo/localpg" "-k" "/tmp" "-p" "5433" "-c" "listen_addresses="

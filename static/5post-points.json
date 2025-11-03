@@ -1,0 +1,197 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "id": 1,
+            "geometry": {"type": "Point", "coordinates": [55.751244, 37.618423]},
+            "properties": {
+                "balloonContentHeader": "5post Москва",
+                "balloonContentBody": "Москва, Тверская улица, 7",
+                "hintContent": "Москва, Тверская улица, 7",
+                "city": "Москва",
+                "address": "Москва, Тверская улица, 7"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 2,
+            "geometry": {"type": "Point", "coordinates": [55.765557, 37.605013]},
+            "properties": {
+                "balloonContentHeader": "5post Москва",
+                "balloonContentBody": "Москва, Большая Дмитровка, 15",
+                "hintContent": "Москва, Большая Дмитровка, 15",
+                "city": "Москва",
+                "address": "Москва, Большая Дмитровка, 15"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 3,
+            "geometry": {"type": "Point", "coordinates": [55.739867, 37.541445]},
+            "properties": {
+                "balloonContentHeader": "5post Москва",
+                "balloonContentBody": "Москва, Кутузовский проспект, 30",
+                "hintContent": "Москва, Кутузовский проспект, 30",
+                "city": "Москва",
+                "address": "Москва, Кутузовский проспект, 30"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 4,
+            "geometry": {"type": "Point", "coordinates": [59.938732, 30.316229]},
+            "properties": {
+                "balloonContentHeader": "5post Санкт-Петербург",
+                "balloonContentBody": "Санкт-Петербург, Невский проспект, 28",
+                "hintContent": "Санкт-Петербург, Невский проспект, 28",
+                "city": "Санкт-Петербург",
+                "address": "Санкт-Петербург, Невский проспект, 28"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 5,
+            "geometry": {"type": "Point", "coordinates": [59.9311, 30.3609]},
+            "properties": {
+                "balloonContentHeader": "5post Санкт-Петербург",
+                "balloonContentBody": "Санкт-Петербург, Литейный проспект, 45",
+                "hintContent": "Санкт-Петербург, Литейный проспект, 45",
+                "city": "Санкт-Петербург",
+                "address": "Санкт-Петербург, Литейный проспект, 45"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 6,
+            "geometry": {"type": "Point", "coordinates": [59.9522, 30.3187]},
+            "properties": {
+                "balloonContentHeader": "5post Санкт-Петербург",
+                "balloonContentBody": "Санкт-Петербург, Большой проспект П.С., 76",
+                "hintContent": "Санкт-Петербург, Большой проспект П.С., 76",
+                "city": "Санкт-Петербург",
+                "address": "Санкт-Петербург, Большой проспект П.С., 76"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 7,
+            "geometry": {"type": "Point", "coordinates": [56.838011, 60.597474]},
+            "properties": {
+                "balloonContentHeader": "5post Екатеринбург",
+                "balloonContentBody": "Екатеринбург, улица Малышева, 51",
+                "hintContent": "Екатеринбург, улица Малышева, 51",
+                "city": "Екатеринбург",
+                "address": "Екатеринбург, улица Малышева, 51"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 8,
+            "geometry": {"type": "Point", "coordinates": [56.843099, 60.605511]},
+            "properties": {
+                "balloonContentHeader": "5post Екатеринбург",
+                "balloonContentBody": "Екатеринбург, проспект Ленина, 25",
+                "hintContent": "Екатеринбург, проспект Ленина, 25",
+                "city": "Екатеринбург",
+                "address": "Екатеринбург, проспект Ленина, 25"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 9,
+            "geometry": {"type": "Point", "coordinates": [55.78874, 49.12214]},
+            "properties": {
+                "balloonContentHeader": "5post Казань",
+                "balloonContentBody": "Казань, проспект Победы, 19",
+                "hintContent": "Казань, проспект Победы, 19",
+                "city": "Казань",
+                "address": "Казань, проспект Победы, 19"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 10,
+            "geometry": {"type": "Point", "coordinates": [55.796127, 49.106414]},
+            "properties": {
+                "balloonContentHeader": "5post Казань",
+                "balloonContentBody": "Казань, улица Баумана, 54",
+                "hintContent": "Казань, улица Баумана, 54",
+                "city": "Казань",
+                "address": "Казань, улица Баумана, 54"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 11,
+            "geometry": {"type": "Point", "coordinates": [55.030204, 82.92043]},
+            "properties": {
+                "balloonContentHeader": "5post Новосибирск",
+                "balloonContentBody": "Новосибирск, Красный проспект, 50",
+                "hintContent": "Новосибирск, Красный проспект, 50",
+                "city": "Новосибирск",
+                "address": "Новосибирск, Красный проспект, 50"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 12,
+            "geometry": {"type": "Point", "coordinates": [55.0415, 82.9346]},
+            "properties": {
+                "balloonContentHeader": "5post Новосибирск",
+                "balloonContentBody": "Новосибирск, улица Советская, 5",
+                "hintContent": "Новосибирск, улица Советская, 5",
+                "city": "Новосибирск",
+                "address": "Новосибирск, улица Советская, 5"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 13,
+            "geometry": {"type": "Point", "coordinates": [56.2965, 43.9361]},
+            "properties": {
+                "balloonContentHeader": "5post Нижний Новгород",
+                "balloonContentBody": "Нижний Новгород, улица Большая Покровская, 25",
+                "hintContent": "Нижний Новгород, улица Большая Покровская, 25",
+                "city": "Нижний Новгород",
+                "address": "Нижний Новгород, улица Большая Покровская, 25"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 14,
+            "geometry": {"type": "Point", "coordinates": [53.195878, 50.100202]},
+            "properties": {
+                "balloonContentHeader": "5post Самара",
+                "balloonContentBody": "Самара, Московское шоссе, 17",
+                "hintContent": "Самара, Московское шоссе, 17",
+                "city": "Самара",
+                "address": "Самара, Московское шоссе, 17"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 15,
+            "geometry": {"type": "Point", "coordinates": [47.235713, 39.701505]},
+            "properties": {
+                "balloonContentHeader": "5post Ростов-на-Дону",
+                "balloonContentBody": "Ростов-на-Дону, Буденновский проспект, 65",
+                "hintContent": "Ростов-на-Дону, Буденновский проспект, 65",
+                "city": "Ростов-на-Дону",
+                "address": "Ростов-на-Дону, Буденновский проспект, 65"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 16,
+            "geometry": {"type": "Point", "coordinates": [45.03547, 38.975313]},
+            "properties": {
+                "balloonContentHeader": "5post Краснодар",
+                "balloonContentBody": "Краснодар, улица Красная, 124",
+                "hintContent": "Краснодар, улица Красная, 124",
+                "city": "Краснодар",
+                "address": "Краснодар, улица Красная, 124"
+            }
+        }
+    ]
+}

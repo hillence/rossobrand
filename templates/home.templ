@@ -1,0 +1,251 @@
+package templates
+
+import (
+	"fmt"
+	"gogo/database"
+	"strconv"
+)
+
+templ Home(products []*database.Product, newArrivals []*database.Product, banners []*database.BannerImage, productAdded bool, isAuthenticated bool, favorites map[int]bool) {
+    <html>
+        <head>
+            <title>Home</title>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+            <link rel="stylesheet" href="/static/style.css"/>
+            <script src="/static/htmx.min.js"></script>
+        </head>
+        <body>
+            @Header(isAuthenticated, false)
+            if len(banners) > 0 {
+                <section class="hero-slider" data-interval="4000" aria-label="Баннер с изображениями">
+                    <div class="hero-slider__slides">
+                        for index, banner := range banners {
+                            <div class={ fmt.Sprintf("hero-slider__slide%s", map[bool]string{true: " hero-slider__slide--active", false: ""}[index == 0]) }>
+                                <img src={ banner.ImageURL } alt={ fmt.Sprintf("Баннер %d", index+1) } class="hero-slider__image"/>
+                            </div>
+                        }
+                    </div>
+                    <div class="hero-slider__dots" role="tablist" aria-label="Панель управления баннером">
+                        for index := range banners {
+                            <button
+                                type="button"
+                                class={ fmt.Sprintf("hero-slider__dot%s", map[bool]string{true: " hero-slider__dot--active", false: ""}[index == 0]) }
+                                data-slide-index={ fmt.Sprintf("%d", index) }
+                                aria-label={ fmt.Sprintf("Показать слайд %d", index+1) }>
+                            </button>
+                        }
+                    </div>
+                </section>
+                <script>
+                    (function () {
+                        var slider = document.querySelector('.hero-slider');
+                        if (!slider) { return; }
+                        var slides = slider.querySelectorAll('.hero-slider__slide');
+                        if (!slides.length) { return; }
+                        var dots = slider.querySelectorAll('.hero-slider__dot');
+                        var interval = 4000;
+                        var activeIndex = 0;
+                        var timer = null;
+
+                        function setActive(nextIndex) {
+                            slides[activeIndex].classList.remove('hero-slider__slide--active');
+                            dots[activeIndex].classList.remove('hero-slider__dot--active');
+                            slides[nextIndex].classList.add('hero-slider__slide--active');
+                            dots[nextIndex].classList.add('hero-slider__dot--active');
+                            activeIndex = nextIndex;
+                        }
+
+                        function nextSlide() {
+                            var nextIndex = (activeIndex + 1) % slides.length;
+                            setActive(nextIndex);
+                        }
+
+                        function restartTimer() {
+                            if (timer) {
+                                clearInterval(timer);
+                            }
+                            timer = setInterval(nextSlide, interval);
+                        }
+
+                        Array.prototype.forEach.call(dots, function (dot, index) {
+                            dot.addEventListener('click', function () {
+                                if (index === activeIndex) { return; }
+                                setActive(index);
+                                restartTimer();
+                            });
+                        });
+
+                        slider.addEventListener('mouseenter', function () {
+                            if (timer) {
+                                clearInterval(timer);
+                            }
+                        });
+
+                        slider.addEventListener('mouseleave', function () {
+                            restartTimer();
+                        });
+
+                        restartTimer();
+                    })();
+                </script>
+            }
+            <main class="main-content">
+                if len(newArrivals) > 0 {
+                    <section class="new-arrivals" data-new-arrivals>
+                        <div class="new-arrivals__inner">
+                            <div class="new-arrivals__header">
+                                <h2 class="new-arrivals__title">новинки</h2>
+                                <div class="new-arrivals__controls">
+                                    <button type="button" class="new-arrivals__control" data-new-arrivals-prev aria-label="Предыдущие новинки" disabled>
+                                        <span aria-hidden="true">&#8592;</span>
+                                    </button>
+                                    <button type="button" class="new-arrivals__control" data-new-arrivals-next aria-label="Следующие новинки">
+                                        <span aria-hidden="true">&#8594;</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="new-arrivals__viewport" data-new-arrivals-viewport>
+                                <div class="new-arrivals__track" data-new-arrivals-track>
+                                    for _, product := range newArrivals {
+                                        if product == nil {
+                                            continue
+                                        }
+                                        <article class="new-arrivals__item" data-new-arrivals-item>
+                                            <a href={ fmt.Sprintf("/products/%d", product.ID) } class="new-arrivals__card">
+                                                if image := product.PrimaryImage(); image != "" {
+                                                    <img src={ image } alt={ product.Name } class="new-arrivals__image"/>
+                                                } else {
+                                                    <div class="new-arrivals__image new-arrivals__image--placeholder">Нет фото</div>
+                                                }
+                                                <h3 class="new-arrivals__name">{ product.Name }</h3>
+                                                <p class="new-arrivals__price">{ fmt.Sprintf("%s ₽", strconv.FormatFloat(product.Price, 'f', -1, 64)) }</p>
+                                            </a>
+                                        </article>
+                                    }
+                                </div>
+                            </div>
+                            <div class="new-arrivals__promo">
+                                <div class="new-arrivals__promo-card new-arrivals__promo-card--trenches" data-new-arrivals-promo="trenches">
+                                    <span class="new-arrivals__promo-label">тренчи</span>
+                                </div>
+                                <div class="new-arrivals__promo-card new-arrivals__promo-card--coats" data-new-arrivals-promo="coats">
+                                    <span class="new-arrivals__promo-label">пальто</span>
+                                </div>
+                                <div class="new-arrivals__promo-card new-arrivals__promo-card--puffers" data-new-arrivals-promo="puffers">
+                                    <span class="new-arrivals__promo-label">пуховики</span>
+                                </div>
+                                <div class="new-arrivals__promo-card new-arrivals__promo-card--bags" data-new-arrivals-promo="bags">
+                                    <span class="new-arrivals__promo-label">сумки</span>
+                                </div>
+                                <div class="new-arrivals__promo-card new-arrivals__promo-card--jackets" data-new-arrivals-promo="jackets">
+                                    <span class="new-arrivals__promo-label">куртки</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                }
+                <div class="container">
+                    <div class="product-grid">
+                        for _, product := range products {
+                            @ProductCard(product, favorites[product.ID], isAuthenticated)
+                        }
+                    </div>
+                </div>
+            </main>
+            if productAdded {
+                @ProductAddedBanner()
+            }
+            @Banner()
+            <script>
+                (function () {
+                    var section = document.querySelector('[data-new-arrivals]');
+                    if (!section) { return; }
+                    var viewport = section.querySelector('[data-new-arrivals-viewport]');
+                    var track = section.querySelector('[data-new-arrivals-track]');
+                    var items = track ? track.querySelectorAll('[data-new-arrivals-item]') : null;
+                    var prevBtn = section.querySelector('[data-new-arrivals-prev]');
+                    var nextBtn = section.querySelector('[data-new-arrivals-next]');
+                    if (!viewport || !track || !items || !items.length) { return; }
+
+                    var index = 0;
+                    var itemWidth = 0;
+                    var maxIndex = 0;
+                    var visibleCount = 4.5;
+
+                    function updateMetrics() {
+                        if (!items.length) { return; }
+                        var rect = items[0].getBoundingClientRect();
+                        itemWidth = rect.width;
+                        if (itemWidth <= 0) {
+                            itemWidth = viewport.offsetWidth / visibleCount;
+                        }
+                        if (itemWidth > 0) {
+                            visibleCount = viewport.offsetWidth / itemWidth;
+                        }
+                        maxIndex = Math.max(0, items.length - Math.ceil(visibleCount));
+                        if (index > maxIndex) {
+                            index = maxIndex;
+                        }
+                        update();
+                    }
+
+                    function update() {
+                        var offset = index * itemWidth;
+                        track.style.transform = 'translateX(' + (-offset) + 'px)';
+                        if (prevBtn) {
+                            prevBtn.disabled = index <= 0;
+                        }
+                        if (nextBtn) {
+                            nextBtn.disabled = index >= maxIndex;
+                        }
+                    }
+
+                    if (prevBtn) {
+                        prevBtn.addEventListener('click', function () {
+                            if (index > 0) {
+                                index -= 1;
+                                update();
+                            }
+                        });
+                    }
+
+                    if (nextBtn) {
+                        nextBtn.addEventListener('click', function () {
+                            if (index < maxIndex) {
+                                index += 1;
+                                update();
+                            }
+                        });
+                    }
+
+                    window.addEventListener('resize', function () {
+                        updateMetrics();
+                    });
+
+                    if (document.readyState === 'complete') {
+                        updateMetrics();
+                    } else {
+                        window.addEventListener('load', updateMetrics);
+                    }
+
+                    updateMetrics();
+                })();
+            </script>
+        </body>
+    </html>
+}
+
+templ ProductAddedBanner() {
+    <div id="product-added-banner">
+        Товар успешно добавлен
+    </div>
+    <script>
+        setTimeout(function() {
+            var banner = document.getElementById('product-added-banner');
+            if (banner) {
+                banner.style.display = 'none';
+            }
+        }, 3000);
+    </script>
+}
