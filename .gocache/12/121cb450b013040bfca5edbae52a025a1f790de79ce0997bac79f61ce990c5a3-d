@@ -1,0 +1,16 @@
+./address_book_templ.go
+./admin_login_templ.go
+./admin_templ.go
+./banner_templ.go
+./cart_templ.go
+./favorites_templ.go
+./header_templ.go
+./home_templ.go
+./layout_templ.go
+./login_templ.go
+./orders_templ.go
+./personal_templ.go
+./product_card_templ.go
+./product_templ.go
+./register_templ.go
+./simple_checkout_templ.go
