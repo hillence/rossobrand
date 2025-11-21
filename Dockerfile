@@ -16,7 +16,7 @@ COPY --from=builder /app/bin/server /app/server
 COPY --from=builder /app/static /app/static
 COPY --from=builder /app/templates /app/templates
 
-ENV APP_PORT=8080 PORT=8080
-EXPOSE 8080
+ENV APP_PORT=3000 PORT=3000
+EXPOSE 3000
 
 CMD ["/app/server"]
