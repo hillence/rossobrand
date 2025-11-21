@@ -16,7 +16,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "${HOST_PORT:-8080}:${APP_PORT:-3000}"
+      - "${HOST_PORT:-0}:${APP_PORT:-3000}"
     environment:
       - APP_PORT=${APP_PORT:-3000}
       - HOST_PORT=${HOST_PORT:-8080}
