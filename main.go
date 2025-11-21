@@ -1357,7 +1357,7 @@ func ensureAdminUser(email, password string) error {
 func normalizePort(value string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
-		return ":3000"
+		return ":8080"
 	}
 	if strings.HasPrefix(value, ":") || strings.Contains(value, ":") {
 		return value
