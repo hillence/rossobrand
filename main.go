@@ -101,6 +101,10 @@ func run() error {
 		return err
 	}
 
+	if err := database.SeedDefaults(); err != nil {
+		return err
+	}
+
 	app := fiber.New()
 
 	app.Use("/a9s5-panel/login", limiter.New(limiter.Config{
