@@ -1,0 +1,7 @@
+.env
+localpg/
+localpg_docker/
+server.log
+.cache/
+.gocache/
+.gomodcache/

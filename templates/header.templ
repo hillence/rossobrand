@@ -6,7 +6,6 @@ templ Header(isAuthenticated bool, showLogout bool) {
             <button type="button" class="site-burger" data-menu-toggle aria-expanded="false" aria-label="Открыть меню">
                 <span class="site-burger__icon" aria-hidden="true">
                     <span class="site-burger__line site-burger__line--top"></span>
-                    <span class="site-burger__line site-burger__line--middle"></span>
                     <span class="site-burger__line site-burger__line--bottom"></span>
                 </span>
             </button>
@@ -42,31 +41,31 @@ templ Header(isAuthenticated bool, showLogout bool) {
                 </button>
             </nav>
             <div class="site-header__actions">
-                <div class="site-header__quick-links">
-                    <button type="button" class="site-header__search" data-search-toggle aria-expanded="false" aria-controls="site-header-search-panel">что хотите найти?</button>
+                <button type="button" class="site-header__search" data-search-toggle aria-expanded="false" aria-controls="site-header-search-panel">что хотите найти?</button>
+                <div class="site-header__icon-group">
                     <a href="/favorites" class="site-header__icon-link site-header__icon-link--favorites" aria-label="Избранное" data-header-favorites>
-                        <svg class="site-header__icon" width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img">
-                            <path fill-rule="evenodd" clip-rule="evenodd" d="M3.73889 1.23062C3.63983 1.23062 3.30411 1.23062 3.30411 1.23062C3.30411 1.23062 3.30411 1.57594 3.30411 1.71979V13.4074L7.99955 9.846L12.6956 13.4076V1.71996C12.6956 1.57612 12.6956 1.2308 12.6956 1.2308C12.6956 1.2308 12.3599 1.2308 12.2608 1.2308L3.73889 1.23062ZM2 0C2 0 3.2614 -0.000176013 3.73889 -0.000176013L12.2608 0C12.7383 0 14 0.000612825 14 0.000612825C14 0.000612825 14 1.27791 14 1.71996V16L7.99998 11.4609L2.00052 15.9998L1.99976 1.71979C1.99976 1.27774 2 0 2 0Z" fill="#676560"></path>
-                        </svg>
+                        <img src="/static/image/favorites.svg" alt="" class="site-header__icon-image" aria-hidden="true"/>
                     </a>
                     <a href="/cart" class="site-header__icon-link site-header__icon-link--cart" aria-label="Корзина" data-header-cart>
-                        <svg class="site-header__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img">
-                            <path fill-rule="evenodd" clip-rule="evenodd" d="M8.00017 0C6.19292 0 4.72786 1.45204 4.72786 3.24323V3.45952H4.06124C3.26063 3.45952 3.09077 3.46032 3.09077 3.46032L2.11429 14.4313C2.08819 14.8047 2 15.9996 2 15.9996C2 15.9996 2.94303 16 3.38753 16H12.6131C13.0576 16 14 15.9996 14 15.9996C14 15.9996 13.9124 14.8047 13.8864 14.4313L12.9077 3.45968C12.9077 3.45968 12.74 3.45952 11.9394 3.45952H11.2725V3.24323C11.2725 1.45204 9.80739 0 8.00017 0ZM9.96356 4.75681V5.83781H11.2725V4.75681H11.8727C11.8864 4.78146 11.9026 4.82358 11.9068 4.884L12.5806 14.521C12.5864 14.6046 12.5659 14.6676 12.5464 14.7027H3.45425C3.43476 14.6676 3.41424 14.6046 3.42009 14.521L4.09379 4.88399C4.09802 4.82354 4.11424 4.78146 4.12795 4.75681H4.72786V5.83781H6.03678V4.75681H9.96356ZM9.96356 3.45952V3.24323C9.96356 2.16852 9.0845 1.29729 8.00017 1.29729C6.91582 1.29729 6.03678 2.16852 6.03678 3.24323V3.45952H9.96356Z" fill="#676560"></path>
-                        </svg>
+                        <img src="/static/image/cart.svg" alt="" class="site-header__icon-image" aria-hidden="true"/>
                     </a>
+                    if isAuthenticated {
+                        <a href="/personal" class="site-header__icon-link site-header__icon-link--profile" aria-label="Личный кабинет">
+                            <img src="/static/image/profile.svg" alt="" class="site-header__icon-image" aria-hidden="true"/>
+                        </a>
+                    } else {
+                        <a
+                            href="#"
+                            class="site-header__icon-link site-header__icon-link--profile"
+                            aria-label="Войти"
+                            role="button"
+                            data-login-open="true"
+                            aria-haspopup="dialog"
+                            aria-controls="login-panel">
+                            <img src="/static/image/profile.svg" alt="" class="site-header__icon-image" aria-hidden="true"/>
+                        </a>
+                    }
                 </div>
-                if !isAuthenticated {
-                    <a href="/login" class="btn-primary site-header__auth-button">войти</a>
-                } else {
-                    if !showLogout {
-                        <a href="/personal" class="btn-primary site-header__button site-header__auth-button">личный кабинет</a>
-                    }
-                    if showLogout {
-                        <form method="post" action="/logout" class="site-header__logout">
-                            <button type="submit" class="btn-primary site-header__auth-button">выйти</button>
-                        </form>
-                    }
-                }
             </div>
         </div>
         <div class="site-header__dropdown" data-nav-panel>
@@ -150,29 +149,96 @@ templ Header(isAuthenticated bool, showLogout bool) {
             <div class="site-menu__actions">
                 <div class="site-header__quick-links site-header__quick-links--menu">
                     <button type="button" class="site-header__search">что то хотите найти?</button>
-                    <a href="/favorites" class="site-header__icon-link site-header__icon-link--favorites" aria-label="Избранное" data-header-favorites>
-                        <svg class="site-header__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img">
-                            <path fill-rule="evenodd" clip-rule="evenodd" d="M3.73889 1.23062C3.63983 1.23062 3.30411 1.23062 3.30411 1.23062C3.30411 1.23062 3.30411 1.57594 3.30411 1.71979V13.4074L7.99955 9.846L12.6956 13.4076V1.71996C12.6956 1.57612 12.6956 1.2308 12.6956 1.2308C12.6956 1.2308 12.3599 1.2308 12.2608 1.2308L3.73889 1.23062ZM2 0C2 0 3.2614 -0.000176013 3.73889 -0.000176013L12.2608 0C12.7383 0 14 0.000612825 14 0.000612825C14 0.000612825 14 1.27791 14 1.71996V16L7.99998 11.4609L2.00052 15.9998L1.99976 1.71979C1.99976 1.27774 2 0 2 0Z" fill="#676560"></path>
-                        </svg>
-                    </a>
-                    <a href="/cart" class="site-header__icon-link site-header__icon-link--cart" aria-label="Корзина" data-header-cart>
-                        <svg class="site-header__icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img">
-                            <path fill-rule="evenodd" clip-rule="evenodd" d="M8.00017 0C6.19292 0 4.72786 1.45204 4.72786 3.24323V3.45952H4.06124C3.26063 3.45952 3.09077 3.46032 3.09077 3.46032L2.11429 14.4313C2.08819 14.8047 2 15.9996 2 15.9996C2 15.9996 2.94303 16 3.38753 16H12.6131C13.0576 16 14 15.9996 14 15.9996C14 15.9996 13.9124 14.8047 13.8864 14.4313L12.9077 3.45968C12.9077 3.45968 12.74 3.45952 11.9394 3.45952H11.2725V3.24323C11.2725 1.45204 9.80739 0 8.00017 0ZM9.96356 4.75681V5.83781H11.2725V4.75681H11.8727C11.8864 4.78146 11.9026 4.82358 11.9068 4.884L12.5806 14.521C12.5864 14.6046 12.5659 14.6676 12.5464 14.7027H3.45425C3.43476 14.6676 3.41424 14.6046 3.42009 14.521L4.09379 4.88399C4.09802 4.82354 4.11424 4.78146 4.12795 4.75681H4.72786V5.83781H6.03678V4.75681H9.96356ZM9.96356 3.45952V3.24323C9.96356 2.16852 9.0845 1.29729 8.00017 1.29729C6.91582 1.29729 6.03678 2.16852 6.03678 3.24323V3.45952H9.96356Z" fill="#676560"></path>
-                        </svg>
-                    </a>
                 </div>
-                if !isAuthenticated {
-                    <a href="/login" class="btn-primary site-menu__button site-header__auth-button">Войти</a>
-                } else {
-                    if !showLogout {
-                        <a href="/personal" class="btn-primary site-menu__button site-header__auth-button">Личный кабинет</a>
-                    }
-                    if showLogout {
-                        <form method="post" action="/logout" class="site-menu__logout">
-                            <button type="submit" class="btn-primary site-header__auth-button">Выйти</button>
-                        </form>
-                    }
-                }
+            </div>
+        </div>
+    </div>
+    <div class="login-panel" data-login-panel aria-hidden="true" id="login-panel">
+        <div class="login-panel__overlay" data-login-overlay aria-hidden="true"></div>
+        <div class="login-panel__drawer" data-login-drawer role="dialog" aria-modal="true" aria-labelledby="login-panel-title">
+            <button type="button" class="login-panel__close" data-login-close aria-label="Закрыть окно">
+                <span class="login-panel__close-line"></span>
+                <span class="login-panel__close-line"></span>
+            </button>
+            <div class="login-panel__content">
+                <h2 class="login-panel__title" id="login-panel-title">войти или зарегистрироваться</h2>
+                <form class="login-panel__form" method="POST" action="/login" data-login-form>
+                    <label class="login-panel__field">
+                        <span class="login-panel__label">почта</span>
+                        <input type="email" name="email" class="login-panel__input" placeholder="example@mail.com" required data-login-email/>
+                    </label>
+                    <label class="login-panel__field login-panel__field--password">
+                        <span class="login-panel__label">пароль</span>
+                        <input type="password" name="password" class="login-panel__input" placeholder="Введите пароль" required/>
+                    </label>
+                    <button type="submit" class="login-panel__submit">войти</button>
+                </form>
+                <button type="button" class="login-panel__register" data-register-open>создать новый аккаунт</button>
+                <button type="button" class="login-panel__forgot" data-forgot-open>забыли пароль?</button>
+            </div>
+        </div>
+    </div>
+    <div class="register-panel" data-register-panel aria-hidden="true" id="register-panel">
+        <div class="login-panel__overlay" data-register-overlay aria-hidden="true"></div>
+        <div class="login-panel__drawer" data-register-drawer role="dialog" aria-modal="true" aria-labelledby="register-panel-title">
+            <button type="button" class="login-panel__close" data-register-close aria-label="Закрыть окно">
+                <span class="login-panel__close-line"></span>
+                <span class="login-panel__close-line"></span>
+            </button>
+            <div class="login-panel__content register-panel__content">
+                <h2 class="login-panel__title" id="register-panel-title">зарегистрироваться</h2>
+                <form class="login-panel__form register-panel__form" method="POST" action="/register" data-register-form>
+                    <div class="register-panel__row">
+                        <label class="login-panel__field">
+                            <span class="login-panel__label">имя</span>
+                            <input type="text" name="first_name" class="login-panel__input" placeholder="Имя" required/>
+                        </label>
+                        <label class="login-panel__field">
+                            <span class="login-panel__label">фамилия</span>
+                            <input type="text" name="last_name" class="login-panel__input" placeholder="Фамилия" required/>
+                        </label>
+                    </div>
+                    <label class="login-panel__field">
+                        <span class="login-panel__label">почта</span>
+                        <input type="email" name="email" class="login-panel__input" placeholder="example@mail.com" required/>
+                    </label>
+                    <label class="login-panel__field">
+                        <span class="login-panel__label">телефон</span>
+                        <input type="tel" name="phone" class="login-panel__input" placeholder="+7 (___) ___-__-__" required/>
+                    </label>
+                    <label class="login-panel__field">
+                        <span class="login-panel__label">придумайте пароль</span>
+                        <input type="password" name="password" class="login-panel__input" placeholder="Пароль" required data-register-password/>
+                    </label>
+                    <label class="login-panel__field">
+                        <span class="login-panel__label">повторите пароль</span>
+                        <input type="password" name="confirm_password" class="login-panel__input" placeholder="Повторите пароль" required data-register-confirm/>
+                    </label>
+                    <button type="submit" class="login-panel__submit register-panel__submit" data-register-submit disabled>зарегистрироваться</button>
+                    <label class="register-panel__checkbox">
+                        <input type="checkbox" name="terms_agree" required/>
+                        <span>Я ознакомился и согласен с условиями Пользовательского соглашения и приложений к нему, включая Общие условия агентского договора по приобретению и доставке товаров, Правилами совершения платежей и возврата оплаты, Политикой обработки персональных данных и файлов Cookie.</span>
+                    </label>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="forgot-panel" data-forgot-panel aria-hidden="true" id="forgot-panel">
+        <div class="login-panel__overlay" data-forgot-overlay aria-hidden="true"></div>
+        <div class="login-panel__drawer" data-forgot-drawer role="dialog" aria-modal="true" aria-labelledby="forgot-panel-title">
+            <button type="button" class="login-panel__close" data-forgot-close aria-label="Закрыть окно">
+                <span class="login-panel__close-line"></span>
+                <span class="login-panel__close-line"></span>
+            </button>
+            <div class="login-panel__content">
+                <h2 class="login-panel__title" id="forgot-panel-title">восстановить доступ</h2>
+                <form class="login-panel__form forgot-panel__form" method="POST" action="/password/restore" data-forgot-form>
+                    <label class="login-panel__field">
+                        <span class="login-panel__label">почта</span>
+                        <input type="email" name="email" class="login-panel__input" placeholder="example@mail.com" required data-forgot-email/>
+                    </label>
+                    <button type="submit" class="login-panel__submit forgot-panel__submit">восстановить доступ</button>
+                </form>
             </div>
         </div>
     </div>
@@ -659,6 +725,14 @@ templ Header(isAuthenticated bool, showLogout bool) {
     var cartCount = 0;
     var cartTotal = 0;
 
+    function promptLoginPanel() {
+        if (typeof window.openLoginPanel === 'function') {
+            window.openLoginPanel();
+        } else {
+            window.location.href = '/login';
+        }
+    }
+
     function updateFavoriteState(button, favorited) {
         if (!button) { return; }
         button.classList.toggle('product-card__favorite--active', favorited);
@@ -707,6 +781,28 @@ templ Header(isAuthenticated bool, showLogout bool) {
         });
     }
 
+    function setCartAddButtonState(productId, inCart) {
+        if (!productId) { return; }
+        var buttons = doc.querySelectorAll('[data-cart-add][data-product-id="' + productId + '"]');
+        buttons.forEach(function (button) {
+            if (!button.dataset.originalLabel) {
+                button.dataset.originalLabel = (button.textContent || '').trim();
+            }
+            if (inCart) {
+                button.classList.add('is-added');
+                button.textContent = 'в корзине';
+                button.setAttribute('aria-pressed', 'true');
+                button.setAttribute('data-in-cart', 'true');
+            } else {
+                button.classList.remove('is-added');
+                var label = button.dataset.originalLabel || 'добавить в корзину';
+                button.textContent = label;
+                button.removeAttribute('aria-pressed');
+                button.removeAttribute('data-in-cart');
+            }
+        });
+    }
+
     function updateCartEmptyState() {
         var itemsContainer = doc.querySelector('[data-cart-items]');
         var emptyState = doc.querySelector('[data-cart-empty]');
@@ -724,7 +820,6 @@ templ Header(isAuthenticated bool, showLogout bool) {
     }
 
     function refreshFavoritesCount() {
-        if (!isAuthenticated) { return; }
         fetch('/favorites/count', {
             headers: { 'Accept': 'application/json' },
             credentials: 'same-origin'
@@ -738,7 +833,6 @@ templ Header(isAuthenticated bool, showLogout bool) {
     }
 
     function refreshCartState() {
-        if (!isAuthenticated) { return; }
         fetch('/cart/count', {
             headers: { 'Accept': 'application/json' },
             credentials: 'same-origin'
@@ -777,7 +871,7 @@ templ Header(isAuthenticated bool, showLogout bool) {
                 credentials: 'same-origin'
             }).then(function (response) {
                 if (response.status === 401) {
-                    window.location.href = '/login';
+                    promptLoginPanel();
                     return null;
                 }
                 if (!response.ok) {
@@ -855,9 +949,6 @@ templ Header(isAuthenticated bool, showLogout bool) {
         button.dataset.busy = 'true';
         button.disabled = true;
 
-        var originalText = button.dataset.originalLabel || button.textContent;
-        button.dataset.originalLabel = originalText;
-
         fetch('/cart/' + productId + '/add', {
             method: 'POST',
             headers: {
@@ -868,7 +959,7 @@ templ Header(isAuthenticated bool, showLogout bool) {
             body: JSON.stringify({ size: sizeValue })
         }).then(function (response) {
             if (response.status === 401) {
-                window.location.href = '/login';
+                promptLoginPanel();
                 return null;
             }
             if (!response.ok) {
@@ -882,12 +973,7 @@ templ Header(isAuthenticated bool, showLogout bool) {
             setCartIcon(cartCount > 0);
             setCartTotalDisplay(cartTotal);
             setCartCountDisplay(cartCount);
-            button.classList.add('is-added');
-            button.textContent = 'В корзине';
-            setTimeout(function () {
-                button.classList.remove('is-added');
-                button.textContent = originalText;
-            }, 2000);
+            setCartAddButtonState(productId, true);
         }).catch(function (error) {
             console.error(error);
         }).finally(function () {
@@ -916,7 +1002,7 @@ templ Header(isAuthenticated bool, showLogout bool) {
             body: JSON.stringify({ size: sizeValue })
         }).then(function (response) {
             if (response.status === 401) {
-                window.location.href = '/login';
+                promptLoginPanel();
                 return null;
             }
             if (!response.ok) {
@@ -934,6 +1020,7 @@ templ Header(isAuthenticated bool, showLogout bool) {
                 item.remove();
             }
             updateCartEmptyState();
+            setCartAddButtonState(productId, false);
         }).catch(function (error) {
             console.error(error);
         }).finally(function () {
@@ -980,7 +1067,7 @@ templ Header(isAuthenticated bool, showLogout bool) {
             body: JSON.stringify({ size: sizeValue })
         }).then(function (response) {
             if (response.status === 401) {
-                window.location.href = '/login';
+                promptLoginPanel();
                 return null;
             }
             if (!response.ok) {
@@ -1029,7 +1116,7 @@ templ Header(isAuthenticated bool, showLogout bool) {
             body: JSON.stringify({ size: sizeValue })
         }).then(function (response) {
             if (response.status === 401) {
-                window.location.href = '/login';
+                promptLoginPanel();
                 return null;
             }
             if (!response.ok) {
@@ -1047,6 +1134,7 @@ templ Header(isAuthenticated bool, showLogout bool) {
             if (quantity <= 0) {
                 item.remove();
                 updateCartEmptyState();
+                setCartAddButtonState(productId, false);
             } else {
                 updateCartItemVisuals(item, quantity);
             }
@@ -1072,6 +1160,265 @@ templ Header(isAuthenticated bool, showLogout bool) {
     refreshFavoritesCount();
     refreshCartState();
     syncCartDecrementState();
+})();
+
+(function () {
+    var doc = document;
+    var body = document.body;
+    var loginPanel = doc.querySelector('[data-login-panel]');
+    var registerPanel = doc.querySelector('[data-register-panel]');
+    var forgotPanel = doc.querySelector('[data-forgot-panel]');
+    if (!loginPanel && !registerPanel && !forgotPanel) { return; }
+
+    var loginOverlay = loginPanel ? loginPanel.querySelector('[data-login-overlay]') : null;
+    var loginClose = loginPanel ? loginPanel.querySelector('[data-login-close]') : null;
+    var loginEmailInput = loginPanel ? loginPanel.querySelector('[data-login-email]') : null;
+    var registerOverlay = registerPanel ? registerPanel.querySelector('[data-register-overlay]') : null;
+    var registerClose = registerPanel ? registerPanel.querySelector('[data-register-close]') : null;
+    var registerFirstInput = registerPanel ? registerPanel.querySelector('input[name="first_name"]') : null;
+    var registerPassword = registerPanel ? registerPanel.querySelector('[data-register-password]') : null;
+    var registerConfirm = registerPanel ? registerPanel.querySelector('[data-register-confirm]') : null;
+    var registerForm = registerPanel ? registerPanel.querySelector('[data-register-form]') : null;
+    var registerSubmit = registerPanel ? registerPanel.querySelector('[data-register-submit]') : null;
+    var registerRequiredInputs = registerForm ? registerForm.querySelectorAll('input[required]') : [];
+    var forgotOverlay = forgotPanel ? forgotPanel.querySelector('[data-forgot-overlay]') : null;
+    var forgotClose = forgotPanel ? forgotPanel.querySelector('[data-forgot-close]') : null;
+    var forgotEmailInput = forgotPanel ? forgotPanel.querySelector('[data-forgot-email]') : null;
+
+    var activePanel = null;
+    var activeTrigger = null;
+
+    function lockScroll() {
+        body.classList.add('body--login-open');
+    }
+
+    function unlockScroll() {
+        body.classList.remove('body--login-open');
+    }
+
+    function closePanel(panel) {
+        if (!panel || !panel.classList.contains('is-open')) { return; }
+        panel.classList.remove('is-open');
+        panel.setAttribute('aria-hidden', 'true');
+        if (panel === activePanel) {
+            activePanel = null;
+            unlockScroll();
+            if (activeTrigger && typeof activeTrigger.focus === 'function') {
+                activeTrigger.focus();
+            }
+            activeTrigger = null;
+        }
+    }
+
+    function openPanel(panel, focusTarget, trigger) {
+        if (!panel) { return; }
+        if (activePanel && activePanel !== panel) {
+            closePanel(activePanel);
+        }
+        if (panel.classList.contains('is-open')) {
+            activeTrigger = trigger || activeTrigger;
+            return;
+        }
+        activeTrigger = trigger || null;
+        panel.classList.add('is-open');
+        panel.setAttribute('aria-hidden', 'false');
+        activePanel = panel;
+        lockScroll();
+        if (focusTarget) {
+            window.requestAnimationFrame(function () {
+                if (typeof focusTarget.focus === 'function') {
+                    focusTarget.focus();
+                    if (typeof focusTarget.select === 'function') {
+                        focusTarget.select();
+                    }
+                }
+            });
+        }
+    }
+
+    function openLoginPanel(trigger) {
+        openPanel(loginPanel, loginEmailInput, trigger);
+    }
+
+    function openRegisterPanel(trigger) {
+        openPanel(registerPanel, registerFirstInput, trigger);
+        updateRegisterSubmitState();
+    }
+
+    function openForgotPanel(trigger) {
+        openPanel(forgotPanel, forgotEmailInput, trigger);
+    }
+
+    var loginTriggers = doc.querySelectorAll('[data-login-open="true"]');
+    loginTriggers.forEach(function (trigger) {
+        trigger.addEventListener('click', function (event) {
+            event.preventDefault();
+            openLoginPanel(trigger);
+        });
+    });
+
+    var registerTriggers = doc.querySelectorAll('[data-register-open]');
+    registerTriggers.forEach(function (trigger) {
+        trigger.addEventListener('click', function (event) {
+            event.preventDefault();
+            openRegisterPanel(trigger);
+        });
+    });
+
+    var forgotTriggers = doc.querySelectorAll('[data-forgot-open]');
+    forgotTriggers.forEach(function (trigger) {
+        trigger.addEventListener('click', function (event) {
+            event.preventDefault();
+            openForgotPanel(trigger);
+        });
+    });
+
+    if (loginOverlay) {
+        loginOverlay.addEventListener('click', function (event) {
+            event.preventDefault();
+            closePanel(loginPanel);
+        });
+    }
+
+    if (loginClose) {
+        loginClose.addEventListener('click', function (event) {
+            event.preventDefault();
+            closePanel(loginPanel);
+        });
+    }
+
+    if (registerOverlay) {
+        registerOverlay.addEventListener('click', function (event) {
+            event.preventDefault();
+            closePanel(registerPanel);
+        });
+    }
+
+    if (registerClose) {
+        registerClose.addEventListener('click', function (event) {
+            event.preventDefault();
+            closePanel(registerPanel);
+        });
+    }
+
+    if (forgotOverlay) {
+        forgotOverlay.addEventListener('click', function (event) {
+            event.preventDefault();
+            var panel = event.currentTarget.closest('[data-forgot-panel]');
+            closePanel(panel || forgotPanel);
+        });
+    }
+
+    if (forgotClose) {
+        forgotClose.addEventListener('click', function (event) {
+            event.preventDefault();
+            var panel = event.currentTarget.closest('[data-forgot-panel]');
+            closePanel(panel || forgotPanel);
+        });
+    }
+
+    doc.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && activePanel) {
+            closePanel(activePanel);
+        }
+    });
+
+    function handleQueryParam(key, openFn) {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get(key) === 'open') {
+            openFn();
+            params.delete(key);
+            var rest = params.toString();
+            var replacement = window.location.pathname + (rest ? '?' + rest : '') + window.location.hash;
+            window.history.replaceState({}, document.title, replacement);
+        }
+    }
+
+    handleQueryParam('login', openLoginPanel);
+    handleQueryParam('register', openRegisterPanel);
+    handleQueryParam('forgot', openForgotPanel);
+
+    window.openLoginPanel = function () {
+        openLoginPanel();
+    };
+
+    window.openRegisterPanel = function () {
+        openRegisterPanel();
+    };
+
+    window.openForgotPanel = function () {
+        openForgotPanel();
+    };
+
+    window.closeLoginPanel = function () {
+        closePanel(loginPanel);
+    };
+
+    window.closeForgotPanel = function () {
+        closePanel(forgotPanel);
+    };
+
+    function validateRegisterPasswords() {
+        if (!registerPassword || !registerConfirm) { return true; }
+        if (registerPassword.value !== registerConfirm.value) {
+            registerConfirm.setCustomValidity('Пароли не совпадают');
+            return false;
+        }
+        registerConfirm.setCustomValidity('');
+        return true;
+    }
+
+    function updateRegisterSubmitState() {
+        if (!registerSubmit) { return; }
+        var allFilled = true;
+        registerRequiredInputs.forEach(function (input) {
+            if (input.type === 'checkbox') {
+                if (!input.checked) {
+                    allFilled = false;
+                }
+            } else if (!input.value || !input.value.trim()) {
+                allFilled = false;
+            }
+        });
+        var passwordsValid = validateRegisterPasswords();
+        registerSubmit.disabled = !(allFilled && passwordsValid);
+    }
+
+    if (registerPassword && registerConfirm) {
+        registerPassword.addEventListener('input', function () {
+            validateRegisterPasswords();
+            updateRegisterSubmitState();
+        });
+        registerConfirm.addEventListener('input', function () {
+            validateRegisterPasswords();
+            updateRegisterSubmitState();
+        });
+    }
+
+    if (registerRequiredInputs.length) {
+        registerRequiredInputs.forEach(function (input) {
+            var handler = function () {
+                updateRegisterSubmitState();
+            };
+            input.addEventListener(input.type === 'checkbox' ? 'change' : 'input', handler);
+        });
+    }
+
+    if (registerForm) {
+        registerForm.addEventListener('submit', function (event) {
+            if (!validateRegisterPasswords()) {
+                event.preventDefault();
+                registerConfirm.focus();
+                return;
+            }
+            updateRegisterSubmitState();
+            if (registerSubmit && registerSubmit.disabled) {
+                event.preventDefault();
+            }
+        });
+    }
+
+    updateRegisterSubmitState();
 })();
     </script>
 }

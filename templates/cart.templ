@@ -102,7 +102,7 @@ templ Cart(items []*database.CartItem, total float64, isAuthenticated bool) {
                                     <input class="cart-summary__input" type="text" placeholder="Промокод" aria-label="Введите промокод"/>
                                     <button type="button" class="cart-summary__apply">применить</button>
                                 </div>
-                                <a href="/checkout/address" class="cart-summary__checkout">оформить заказ</a>
+                                <a href={ map[bool]string{true: "/checkout/address", false: "/simplecheckout"}[isAuthenticated] } class="cart-summary__checkout">оформить заказ</a>
                             </aside>
                         </div>
                     </section>

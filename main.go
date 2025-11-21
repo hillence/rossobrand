@@ -80,10 +80,12 @@ func main() {
 }
 
 func run() error {
-	const (
-		adminEmail        = "hillence@yahoo.com"
-		adminPasswordHash = "$2a$10$dhTWmLt9nOehAq.NqJC5ruwGWrjX8ooupQGIiMSBhwxZogTcGMtfe"
-	)
+	adminEmail := strings.TrimSpace(os.Getenv("ADMIN_EMAIL"))
+	adminPassword := os.Getenv("ADMIN_PASSWORD")
+	if adminEmail == "" || adminPassword == "" {
+		return errors.New("ADMIN_EMAIL and ADMIN_PASSWORD must be configured")
+	}
+	listenAddr := normalizePort(os.Getenv("APP_PORT"))
 
 	// IMPORTANT: Replace with your actual database connection string
 	if err := database.Connect(); err != nil {
@@ -95,20 +97,8 @@ func run() error {
 		return err
 	}
 
-	// Ensure admin user exists with expected credentials
-	adminUser, err := database.GetUserByEmail(adminEmail)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			if _, err := database.CreateUserWithHash(adminEmail, adminPasswordHash, "Hillence", "Admin", true); err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	} else if adminUser.PasswordHash != adminPasswordHash {
-		if err := database.UpdateUserPasswordHash(adminUser.ID, adminPasswordHash); err != nil {
-			return err
-		}
+	if err := ensureAdminUser(adminEmail, adminPassword); err != nil {
+		return err
 	}
 
 	app := fiber.New()
@@ -173,6 +163,12 @@ func run() error {
 			} else {
 				return err
 			}
+		} else if token := getGuestSessionToken(c); token != "" {
+			if ids, err := database.GetGuestFavoriteProductIDs(token); err == nil && ids != nil {
+				favorites = ids
+			} else if err != nil {
+				return err
+			}
 		}
 		productAdded := c.Query("product_added") == "true"
 		isAuthenticated := user != nil
@@ -226,13 +222,25 @@ func run() error {
 			if err != nil {
 				return err
 			}
+		} else if token := getGuestSessionToken(c); token != "" {
+			isFavorited, err = database.IsGuestFavorite(token, productID)
+			if err != nil {
+				return err
+			}
 		}
 
 		return adaptor.HTTPHandler(templ.Handler(templates.ProductDetail(product, isAuthenticated, isFavorited)))(c)
 	})
 
 	app.Get("/login", func(c *fiber.Ctx) error {
-		return adaptor.HTTPHandler(templ.Handler(templates.Login()))(c)
+		user, err := getCurrentUser(c)
+		if err != nil {
+			return err
+		}
+		if user != nil {
+			return c.Redirect("/personal")
+		}
+		return c.Redirect("/?login=open")
 	})
 
 	app.Post("/login", func(c *fiber.Ctx) error {
@@ -265,18 +273,33 @@ func run() error {
 	app.Post("/register", func(c *fiber.Ctx) error {
 		email := c.FormValue("email")
 		password := c.FormValue("password")
+		confirmPassword := c.FormValue("confirm_password")
 		firstName := strings.TrimSpace(c.FormValue("first_name"))
 		lastName := strings.TrimSpace(c.FormValue("last_name"))
+		termsAccepted := strings.TrimSpace(c.FormValue("terms_agree"))
+		phone := strings.TrimSpace(c.FormValue("phone"))
 
 		if firstName == "" || lastName == "" {
 			return fiber.ErrBadRequest
+		}
+
+		if phone == "" {
+			return fiber.NewError(fiber.StatusBadRequest, "Требуется номер телефона")
+		}
+
+		if password == "" || confirmPassword == "" || password != confirmPassword {
+			return fiber.NewError(fiber.StatusBadRequest, "Пароли не совпадают")
+		}
+
+		if termsAccepted == "" {
+			return fiber.NewError(fiber.StatusBadRequest, "Требуется согласие с условиями")
 		}
 
 		if _, err := database.GetUserByEmail(email); err == nil {
 			return fiber.ErrConflict
 		}
 
-		createdUser, err := database.CreateUser(email, password, firstName, lastName, false)
+		createdUser, err := database.CreateUser(email, password, firstName, lastName, phone, false)
 		if err != nil {
 			return err
 		}
@@ -291,23 +314,36 @@ func run() error {
 		return c.Redirect("/personal")
 	})
 
-	app.Get("/favorites", AuthMiddleware, func(c *fiber.Ctx) error {
+	app.Get("/favorites", func(c *fiber.Ctx) error {
 		user, err := getCurrentUser(c)
 		if err != nil {
 			return err
 		}
-		if user == nil {
-			return c.Redirect("/login")
+		isAuthenticated := user != nil
+		var (
+			products  []*database.Product
+			favorites map[int]bool
+		)
+		if user != nil {
+			products, err = database.GetFavoriteProducts(user.ID)
+			if err != nil {
+				return err
+			}
+			favorites, err = database.GetFavoriteProductIDs(user.ID)
+			if err != nil {
+				return err
+			}
+		} else if token := getGuestSessionToken(c); token != "" {
+			if favorites, err = database.GetGuestFavoriteProductIDs(token); err != nil {
+				return err
+			}
+			if products, err = database.GetGuestFavoriteProducts(token); err != nil {
+				return err
+			}
+		} else {
+			favorites = make(map[int]bool)
 		}
-		products, err := database.GetFavoriteProducts(user.ID)
-		if err != nil {
-			return err
-		}
-		favorites, err := database.GetFavoriteProductIDs(user.ID)
-		if err != nil {
-			return err
-		}
-		return adaptor.HTTPHandler(templ.Handler(templates.Favorites(products, favorites, true)))(c)
+		return adaptor.HTTPHandler(templ.Handler(templates.Favorites(products, favorites, isAuthenticated)))(c)
 	})
 
 	app.Get("/favorites/count", func(c *fiber.Ctx) error {
@@ -315,23 +351,27 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		if user == nil {
-			return c.JSON(fiber.Map{"count": 0})
+		if user != nil {
+			count, err := database.GetFavoriteCount(user.ID)
+			if err != nil {
+				return err
+			}
+			return c.JSON(fiber.Map{"count": count})
 		}
-		count, err := database.GetFavoriteCount(user.ID)
-		if err != nil {
-			return err
+		if token := getGuestSessionToken(c); token != "" {
+			count, err := database.GetGuestFavoriteCount(token)
+			if err != nil {
+				return err
+			}
+			return c.JSON(fiber.Map{"count": count})
 		}
-		return c.JSON(fiber.Map{"count": count})
+		return c.JSON(fiber.Map{"count": 0})
 	})
 
 	app.Post("/favorites/:id/toggle", func(c *fiber.Ctx) error {
 		user, err := getCurrentUser(c)
 		if err != nil {
 			return err
-		}
-		if user == nil {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"favorited": false})
 		}
 		idParam := c.Params("id")
 		productID, err := strconv.Atoi(idParam)
@@ -341,17 +381,37 @@ func run() error {
 		if err := database.EnsureProductExists(productID); err != nil {
 			return fiber.ErrNotFound
 		}
-		isFav, err := database.IsFavoriteProduct(user.ID, productID)
+		if user != nil {
+			isFav, err := database.IsFavoriteProduct(user.ID, productID)
+			if err != nil {
+				return err
+			}
+			if isFav {
+				if err := database.RemoveFavorite(user.ID, productID); err != nil {
+					return err
+				}
+				return c.JSON(fiber.Map{"favorited": false})
+			}
+			if err := database.AddFavorite(user.ID, productID); err != nil {
+				return err
+			}
+			return c.JSON(fiber.Map{"favorited": true})
+		}
+		token, err := ensureGuestSessionToken(c)
+		if err != nil {
+			return err
+		}
+		isFav, err := database.IsGuestFavorite(token, productID)
 		if err != nil {
 			return err
 		}
 		if isFav {
-			if err := database.RemoveFavorite(user.ID, productID); err != nil {
+			if err := database.RemoveGuestFavorite(token, productID); err != nil {
 				return err
 			}
 			return c.JSON(fiber.Map{"favorited": false})
 		}
-		if err := database.AddFavorite(user.ID, productID); err != nil {
+		if err := database.AddGuestFavorite(token, productID); err != nil {
 			return err
 		}
 		return c.JSON(fiber.Map{"favorited": true})
@@ -362,27 +422,35 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		if user == nil {
-			return c.JSON(fiber.Map{"count": 0, "total": 0})
+		if user != nil {
+			count, err := database.GetCartItemCount(user.ID)
+			if err != nil {
+				return err
+			}
+			total, err := database.GetCartTotal(user.ID)
+			if err != nil {
+				return err
+			}
+			return c.JSON(fiber.Map{"count": count, "total": total})
 		}
-		count, err := database.GetCartItemCount(user.ID)
-		if err != nil {
-			return err
+		if token := getGuestSessionToken(c); token != "" {
+			count, err := database.GetGuestCartItemCount(token)
+			if err != nil {
+				return err
+			}
+			total, err := database.GetGuestCartTotal(token)
+			if err != nil {
+				return err
+			}
+			return c.JSON(fiber.Map{"count": count, "total": total})
 		}
-		total, err := database.GetCartTotal(user.ID)
-		if err != nil {
-			return err
-		}
-		return c.JSON(fiber.Map{"count": count, "total": total})
+		return c.JSON(fiber.Map{"count": 0, "total": 0})
 	})
 
 	app.Post("/cart/:id/add", func(c *fiber.Ctx) error {
 		user, err := getCurrentUser(c)
 		if err != nil {
 			return err
-		}
-		if user == nil {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"added": false})
 		}
 		idParam := c.Params("id")
 		productID, err := strconv.Atoi(idParam)
@@ -400,23 +468,49 @@ func run() error {
 				return fiber.ErrBadRequest
 			}
 		}
-		if err := database.AddCartItem(user.ID, productID, payload.Size); err != nil {
-			return err
-		}
-		count, err := database.GetCartItemCount(user.ID)
-		if err != nil {
-			return err
-		}
-		total, err := database.GetCartTotal(user.ID)
-		if err != nil {
-			return err
-		}
-		quantity, exists, err := database.GetCartItemQuantity(user.ID, productID, payload.Size)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			quantity = 0
+		var (
+			count    int
+			quantity int
+			total    float64
+		)
+		if user != nil {
+			if err := database.AddCartItem(user.ID, productID, payload.Size); err != nil {
+				return err
+			}
+			if count, err = database.GetCartItemCount(user.ID); err != nil {
+				return err
+			}
+			if total, err = database.GetCartTotal(user.ID); err != nil {
+				return err
+			}
+			qty, exists, err := database.GetCartItemQuantity(user.ID, productID, payload.Size)
+			if err != nil {
+				return err
+			}
+			if exists {
+				quantity = qty
+			}
+		} else {
+			token, err := ensureGuestSessionToken(c)
+			if err != nil {
+				return err
+			}
+			if err := database.AddGuestCartItem(token, productID, payload.Size); err != nil {
+				return err
+			}
+			if count, err = database.GetGuestCartItemCount(token); err != nil {
+				return err
+			}
+			if total, err = database.GetGuestCartTotal(token); err != nil {
+				return err
+			}
+			qty, exists, err := database.GetGuestCartItemQuantity(token, productID, payload.Size)
+			if err != nil {
+				return err
+			}
+			if exists {
+				quantity = qty
+			}
 		}
 		return c.JSON(fiber.Map{
 			"added":         true,
@@ -431,9 +525,6 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		if user == nil {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"decremented": false})
-		}
 		idParam := c.Params("id")
 		productID, err := strconv.Atoi(idParam)
 		if err != nil || productID <= 0 {
@@ -447,23 +538,49 @@ func run() error {
 				return fiber.ErrBadRequest
 			}
 		}
-		if err := database.DecrementCartItem(user.ID, productID, payload.Size); err != nil {
-			return err
-		}
-		count, err := database.GetCartItemCount(user.ID)
-		if err != nil {
-			return err
-		}
-		total, err := database.GetCartTotal(user.ID)
-		if err != nil {
-			return err
-		}
-		quantity, exists, err := database.GetCartItemQuantity(user.ID, productID, payload.Size)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			quantity = 0
+		var (
+			count    int
+			quantity int
+			total    float64
+		)
+		if user != nil {
+			if err := database.DecrementCartItem(user.ID, productID, payload.Size); err != nil {
+				return err
+			}
+			if count, err = database.GetCartItemCount(user.ID); err != nil {
+				return err
+			}
+			if total, err = database.GetCartTotal(user.ID); err != nil {
+				return err
+			}
+			qty, exists, err := database.GetCartItemQuantity(user.ID, productID, payload.Size)
+			if err != nil {
+				return err
+			}
+			if exists {
+				quantity = qty
+			}
+		} else {
+			token, err := ensureGuestSessionToken(c)
+			if err != nil {
+				return err
+			}
+			if err := database.DecrementGuestCartItem(token, productID, payload.Size); err != nil {
+				return err
+			}
+			if count, err = database.GetGuestCartItemCount(token); err != nil {
+				return err
+			}
+			if total, err = database.GetGuestCartTotal(token); err != nil {
+				return err
+			}
+			qty, exists, err := database.GetGuestCartItemQuantity(token, productID, payload.Size)
+			if err != nil {
+				return err
+			}
+			if exists {
+				quantity = qty
+			}
 		}
 		return c.JSON(fiber.Map{
 			"decremented":   true,
@@ -478,9 +595,6 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		if user == nil {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"removed": false})
-		}
 		idParam := c.Params("id")
 		productID, err := strconv.Atoi(idParam)
 		if err != nil || productID <= 0 {
@@ -494,16 +608,34 @@ func run() error {
 				return fiber.ErrBadRequest
 			}
 		}
-		if err := database.RemoveCartItem(user.ID, productID, payload.Size); err != nil {
-			return err
-		}
-		count, err := database.GetCartItemCount(user.ID)
-		if err != nil {
-			return err
-		}
-		total, err := database.GetCartTotal(user.ID)
-		if err != nil {
-			return err
+		var (
+			count int
+			total float64
+		)
+		if user != nil {
+			if err := database.RemoveCartItem(user.ID, productID, payload.Size); err != nil {
+				return err
+			}
+			if count, err = database.GetCartItemCount(user.ID); err != nil {
+				return err
+			}
+			if total, err = database.GetCartTotal(user.ID); err != nil {
+				return err
+			}
+		} else {
+			token, err := ensureGuestSessionToken(c)
+			if err != nil {
+				return err
+			}
+			if err := database.RemoveGuestCartItem(token, productID, payload.Size); err != nil {
+				return err
+			}
+			if count, err = database.GetGuestCartItemCount(token); err != nil {
+				return err
+			}
+			if total, err = database.GetGuestCartTotal(token); err != nil {
+				return err
+			}
 		}
 		return c.JSON(fiber.Map{
 			"removed":       true,
@@ -513,23 +645,33 @@ func run() error {
 		})
 	})
 
-	app.Get("/cart", AuthMiddleware, func(c *fiber.Ctx) error {
+	app.Get("/cart", func(c *fiber.Ctx) error {
 		user, err := getCurrentUser(c)
 		if err != nil {
 			return err
 		}
-		if user == nil {
-			return c.Redirect("/login")
+		isAuthenticated := user != nil
+		var (
+			items []*database.CartItem
+			total float64
+		)
+		if user != nil {
+			items, err = database.GetCartItems(user.ID)
+			if err != nil {
+				return err
+			}
+			if total, err = database.GetCartTotal(user.ID); err != nil {
+				return err
+			}
+		} else if token := getGuestSessionToken(c); token != "" {
+			if items, err = database.GetGuestCartItems(token); err != nil {
+				return err
+			}
+			if total, err = database.GetGuestCartTotal(token); err != nil {
+				return err
+			}
 		}
-		items, err := database.GetCartItems(user.ID)
-		if err != nil {
-			return err
-		}
-		total, err := database.GetCartTotal(user.ID)
-		if err != nil {
-			return err
-		}
-		return adaptor.HTTPHandler(templ.Handler(templates.Cart(items, total, user != nil)))(c)
+		return adaptor.HTTPHandler(templ.Handler(templates.Cart(items, total, isAuthenticated)))(c)
 	})
 
 	app.Get("/checkout/address", AuthMiddleware, func(c *fiber.Ctx) error {
@@ -677,29 +819,45 @@ func run() error {
 		return c.SendStatus(fiber.StatusNoContent)
 	})
 
-	app.Get("/simplecheckout", AuthMiddleware, func(c *fiber.Ctx) error {
+	app.Get("/simplecheckout", func(c *fiber.Ctx) error {
 		user, err := getCurrentUser(c)
 		if err != nil {
 			return err
 		}
-		if user == nil {
-			return c.Redirect("/login")
-		}
-		items, err := database.GetCartItems(user.ID)
-		if err != nil {
-			return err
-		}
-		address, err := database.GetUserAddress(user.ID)
-		if err != nil {
-			return err
-		}
-		itemCount, err := database.GetCartItemCount(user.ID)
-		if err != nil {
-			return err
-		}
-		total, err := database.GetCartTotal(user.ID)
-		if err != nil {
-			return err
+		isAuthenticated := user != nil
+		var (
+			items     []*database.CartItem
+			address   string
+			itemCount int
+			total     float64
+		)
+		if user != nil {
+			items, err = database.GetCartItems(user.ID)
+			if err != nil {
+				return err
+			}
+			address, err = database.GetUserAddress(user.ID)
+			if err != nil {
+				return err
+			}
+			itemCount, err = database.GetCartItemCount(user.ID)
+			if err != nil {
+				return err
+			}
+			total, err = database.GetCartTotal(user.ID)
+			if err != nil {
+				return err
+			}
+		} else if token := getGuestSessionToken(c); token != "" {
+			if items, err = database.GetGuestCartItems(token); err != nil {
+				return err
+			}
+			if itemCount, err = database.GetGuestCartItemCount(token); err != nil {
+				return err
+			}
+			if total, err = database.GetGuestCartTotal(token); err != nil {
+				return err
+			}
 		}
 		return adaptor.HTTPHandler(templ.Handler(templates.SimpleCheckout(
 			user,
@@ -707,21 +865,32 @@ func run() error {
 			items,
 			formatCartItemLabel(itemCount),
 			formatCartTotal(total),
-			user != nil,
+			isAuthenticated,
 		)))(c)
 	})
-
-	app.Post("/orders/create", AuthMiddleware, func(c *fiber.Ctx) error {
+	app.Post("/orders/create", func(c *fiber.Ctx) error {
 		user, err := getCurrentUser(c)
 		if err != nil {
 			return err
 		}
-		if user == nil {
-			return c.Redirect("/login")
-		}
-		items, err := database.GetCartItems(user.ID)
-		if err != nil {
-			return err
+		var (
+			items []*database.CartItem
+			token string
+		)
+		if user != nil {
+			items, err = database.GetCartItems(user.ID)
+			if err != nil {
+				return err
+			}
+		} else {
+			token = getGuestSessionToken(c)
+			if token == "" {
+				return c.Redirect("/simplecheckout?error=session")
+			}
+			items, err = database.GetGuestCartItems(token)
+			if err != nil {
+				return err
+			}
 		}
 		if len(items) == 0 {
 			return c.Redirect("/cart")
@@ -729,12 +898,52 @@ func run() error {
 		deliveryType := strings.TrimSpace(c.FormValue("delivery_type"))
 		pickupPoint := strings.TrimSpace(c.FormValue("pickup_point"))
 		addressValue := strings.TrimSpace(c.FormValue("address"))
+		firstName := strings.TrimSpace(c.FormValue("first_name"))
+		lastName := strings.TrimSpace(c.FormValue("last_name"))
+		emailValue := strings.TrimSpace(c.FormValue("email"))
+		phoneValue := strings.TrimSpace(c.FormValue("phone"))
+		if user == nil {
+			if firstName == "" || lastName == "" || emailValue == "" || phoneValue == "" {
+				return c.Redirect("/simplecheckout?error=contact")
+			}
+		} else {
+			if firstName == "" {
+				firstName = strings.TrimSpace(user.FirstName)
+			}
+			if lastName == "" {
+				lastName = strings.TrimSpace(user.LastName)
+			}
+			if emailValue == "" {
+				emailValue = strings.TrimSpace(user.Email)
+			}
+		}
 		if strings.EqualFold(deliveryType, "pickup") && pickupPoint == "" {
 			return c.Redirect("/simplecheckout?error=pickup_point")
 		}
-		detail, err := database.CreateOrderWithItems(user.ID, items, deliveryType, pickupPoint, addressValue)
+		if strings.EqualFold(deliveryType, "courier") || strings.EqualFold(deliveryType, "post") {
+			if addressValue == "" {
+				return c.Redirect("/simplecheckout?error=address")
+			}
+		}
+		guestName := strings.TrimSpace(strings.TrimSpace(firstName + " " + lastName))
+		if guestName == "" {
+			guestName = strings.TrimSpace(firstName + lastName)
+		}
+		var userID int
+		if user != nil {
+			userID = user.ID
+		}
+		detail, err := database.CreateOrderWithItems(userID, items, deliveryType, pickupPoint, addressValue, guestName, emailValue, phoneValue)
 		if err != nil {
 			return err
+		}
+		if user == nil {
+			if token != "" {
+				if err := database.ClearGuestCart(token); err != nil {
+					return err
+				}
+			}
+			return c.Redirect("/simplecheckout?success=1")
 		}
 		return c.Redirect(fmt.Sprintf("/orders?created=%d", detail.Order.ID))
 	})
@@ -837,7 +1046,11 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		return adaptor.HTTPHandler(templ.Handler(templates.Admin(dbProducts, highlightCandidates, highlights, menuImages, banners, orders)))(c)
+		users, err := database.GetNonAdminUsers()
+		if err != nil {
+			return err
+		}
+		return adaptor.HTTPHandler(templ.Handler(templates.Admin(dbProducts, highlightCandidates, highlights, menuImages, banners, orders, users)))(c)
 	})
 
 	admin.Post("/menu-images", func(c *fiber.Ctx) error {
@@ -1102,10 +1315,54 @@ func run() error {
 
 	app.Static("/static", "./static")
 
-	if err := app.Listen(":3000"); err != nil {
+	if err := app.Listen(listenAddr); err != nil {
 		return err
 	}
 	return nil
+}
+
+func ensureAdminUser(email, password string) error {
+	adminUser, err := database.GetUserByEmail(email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+			if err != nil {
+				return err
+			}
+			_, err = database.CreateUserWithHash(email, string(hash), "Админ", "Пользователь", "", true)
+			return err
+		}
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte(password)); err != nil {
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		if err := database.UpdateUserPasswordHash(adminUser.ID, string(hash)); err != nil {
+			return err
+		}
+	}
+
+	if !adminUser.IsAdmin {
+		if err := database.UpdateUserAdminStatus(adminUser.ID, true); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func normalizePort(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ":3000"
+	}
+	if strings.HasPrefix(value, ":") || strings.Contains(value, ":") {
+		return value
+	}
+	return ":" + value
 }
 
 func AdminMiddleware(adminEmail string) fiber.Handler {
@@ -1158,4 +1415,35 @@ func getCurrentUser(c *fiber.Ctx) (*database.User, error) {
 	}
 	c.Locals("currentUser", user)
 	return user, nil
+}
+
+func getGuestSessionToken(c *fiber.Ctx) string {
+	if cached := c.Locals("guestSessionToken"); cached != nil {
+		if token, ok := cached.(string); ok {
+			return token
+		}
+	}
+	token := strings.TrimSpace(c.Cookies("guest_session"))
+	if token != "" {
+		c.Locals("guestSessionToken", token)
+	}
+	return token
+}
+
+func ensureGuestSessionToken(c *fiber.Ctx) (string, error) {
+	token := getGuestSessionToken(c)
+	if token == "" {
+		token = uuid.NewString()
+		c.Locals("guestSessionToken", token)
+		c.Cookie(&fiber.Cookie{
+			Name:     "guest_session",
+			Value:    token,
+			Expires:  time.Now().Add(30 * 24 * time.Hour),
+			HTTPOnly: true,
+		})
+	}
+	if err := database.EnsureGuestSession(token); err != nil {
+		return "", err
+	}
+	return token, nil
 }

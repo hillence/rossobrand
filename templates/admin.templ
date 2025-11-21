@@ -28,8 +28,8 @@ templ AdminLayout(child templ.Component) {
     </html>
 }
 
-templ Admin(products []*database.Product, highlightCandidates []*database.Product, highlights []*database.Product, menuImages map[string]string, banners []*database.BannerImage, orders []*database.OrderDetail) {
-	@AdminLayout(adminDashboard(products, highlightCandidates, highlights, menuImages, banners, orders))
+templ Admin(products []*database.Product, highlightCandidates []*database.Product, highlights []*database.Product, menuImages map[string]string, banners []*database.BannerImage, orders []*database.OrderDetail, users []*database.User) {
+	@AdminLayout(adminDashboard(products, highlightCandidates, highlights, menuImages, banners, orders, users))
 }
 
 templ MenuImageCard(section string, title string, imageURL string) {
@@ -53,73 +53,32 @@ templ MenuImageCard(section string, title string, imageURL string) {
 	</article>
 }
 
-templ adminDashboard(products []*database.Product, highlightCandidates []*database.Product, highlights []*database.Product, menuImages map[string]string, banners []*database.BannerImage, orders []*database.OrderDetail) {
+templ adminDashboard(products []*database.Product, highlightCandidates []*database.Product, highlights []*database.Product, menuImages map[string]string, banners []*database.BannerImage, orders []*database.OrderDetail, users []*database.User) {
     <section class="admin-dashboard">
         <div class="admin-dashboard__layout">
             <nav class="admin-dashboard__menu" aria-label="Навигация панели">
                 <ul class="admin-menu">
                     <li class="admin-menu__item">
-                        <a class="admin-menu__link" href="/pg1">Главная страница</a>
+                        <a class="admin-menu__link is-active" href="#pg1" data-admin-nav="pg1">Главная страница</a>
                     </li>
                     <li class="admin-menu__item">
-                        <a class="admin-menu__link" href="/pg2">Склад</a>
+                        <a class="admin-menu__link" href="#pg2" data-admin-nav="pg2">Склад</a>
                     </li>
                     <li class="admin-menu__item">
-                        <a class="admin-menu__link" href="/pg3">Пользователи</a>
+                        <a class="admin-menu__link" href="#pg3" data-admin-nav="pg3">Пользователи</a>
                     </li>
                     <li class="admin-menu__item">
-                        <a class="admin-menu__link" href="/pg4">Заказы</a>
+                        <a class="admin-menu__link" href="#pg4" data-admin-nav="pg4">Заказы</a>
                     </li>
                     <li class="admin-menu__item">
-                        <a class="admin-menu__link" href="/pg5">Прочие настройки</a>
+                        <a class="admin-menu__link" href="#pg5" data-admin-nav="pg5">Прочие настройки</a>
                     </li>
                 </ul>
             </nav>
 
 		    <div class="admin-dashboard__content">
 		        <div class="admin-dashboard__body">
-            <section class="panel panel--form">
-                <header class="panel__header">
-                    <div>
-                        <h2 class="panel__title">Добавить товар</h2>
-                        <p class="panel__subtitle">Заполните информацию о продукте. После отправки он появится в каталоге.</p>
-                    </div>
-                </header>
-                <div class="panel__content">
-                    <form class="admin-form" method="post" action="/a9s5-panel/products" enctype="multipart/form-data">
-                        <div class="form-grid">
-                            <div class="form-field">
-                                <label class="form-label" for="name">Название</label>
-                                <input class="form-input" id="name" name="name" type="text" placeholder="Например, Adidas Campus 00s" required/>
-                            </div>
-                            <div class="form-field">
-                                <label class="form-label" for="price">Цена</label>
-                                <input class="form-input" id="price" name="price" type="text" inputmode="decimal" placeholder="Например, 149.90" required/>
-                            </div>
-                            <div class="form-field">
-                                <label class="form-label" for="size">Размеры</label>
-                                <input class="form-input" id="size" name="size" type="text" placeholder="Например, 38, 39, 40"/>
-                            </div>
-                            <div class="form-field form-field--full">
-                                <label class="form-label" for="description">Описание</label>
-                                <textarea class="form-textarea" id="description" name="description" placeholder="Кратко опишите ключевые особенности товара" required></textarea>
-                            </div>
-                            <div class="form-field form-field--full">
-                                <span class="form-label">Изображение</span>
-                                <div class="upload-field">
-                                    <label class="upload-field__button" for="product_image">Загрузить изображение</label>
-                                    <input class="upload-field__input" id="product_image" name="image" type="file" accept="image/*" data-upload-input data-upload-target="product" required/>
-                                    <span class="upload-field__filename" data-upload-filename="product">Файл не выбран</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-actions form-actions--end">
-                            <button class="btn-primary" type="submit">Сохранить товар</button>
-                        </div>
-                    </form>
-                </div>
-            </section>
-
+            <div class="admin-dashboard__section-group is-active" id="pg1" data-admin-section="pg1" aria-hidden="false">
 			<section class="panel panel--highlights">
 				<header class="panel__header">
 					<div>
@@ -198,6 +157,110 @@ templ adminDashboard(products []*database.Product, highlightCandidates []*databa
 				</div>
 			</section>
 
+            <section class="panel panel--banners">
+                <header class="panel__header">
+                    <div>
+                        <h2 class="panel__title">Баннер на главной</h2>
+                        <p class="panel__subtitle">Добавьте ссылки на изображения, чтобы сформировать автопролистывающий баннер на главной странице.</p>
+                    </div>
+                </header>
+                <div class="panel__content">
+                    <form class="admin-form" method="post" action="/a9s5-panel/banners" enctype="multipart/form-data">
+                        <div class="form-grid">
+                            <div class="form-field form-field--full">
+                                <span class="form-label">Изображение</span>
+                                <div class="upload-field">
+                                    <label class="upload-field__button" for="banner_image">Загрузить изображение</label>
+                                    <input class="upload-field__input" id="banner_image" name="image" type="file" accept="image/*" data-upload-input data-upload-target="banner" required/>
+                                    <span class="upload-field__filename" data-upload-filename="banner">Файл не выбран</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions form-actions--end">
+                            <button class="btn-primary" type="submit">Добавить баннер</button>
+                        </div>
+                    </form>
+
+                    if len(banners) == 0 {
+                        <div class="empty-state">
+                            <h3 class="empty-state__title">Список баннеров пуст</h3>
+                            <p class="empty-state__text">Добавьте хотя бы одну ссылку, чтобы баннер появился на главной странице.</p>
+                        </div>
+                    } else {
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Порядок</th>
+                                        <th scope="col">Ссылка</th>
+                                        <th scope="col">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    for index, banner := range banners {
+                                        <tr>
+                                            <td>{ index + 1 }</td>
+                                            <td class="data-table__cell-link">
+                                                <a href={ banner.ImageURL } target="_blank" rel="noopener noreferrer" class="link-button link-button--light">Открыть</a>
+                                            </td>
+                                            <td>
+                                    <form method="post" action={ fmt.Sprintf("/a9s5-panel/banners/%d/delete", banner.ID) } class="table-action">
+                                                    <button class="link-button link-button--dark" type="submit">Удалить</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </section>
+            </div>
+
+            <div class="admin-dashboard__section-group is-hidden" id="pg2" data-admin-section="pg2" aria-hidden="true">
+            <section class="panel panel--form">
+                <header class="panel__header">
+                    <div>
+                        <h2 class="panel__title">Добавить товар</h2>
+                        <p class="panel__subtitle">Заполните информацию о продукте. После отправки он появится в каталоге.</p>
+                    </div>
+                </header>
+                <div class="panel__content">
+                    <form class="admin-form" method="post" action="/a9s5-panel/products" enctype="multipart/form-data">
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label class="form-label" for="name">Название</label>
+                                <input class="form-input" id="name" name="name" type="text" placeholder="Например, Adidas Campus 00s" required/>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label" for="price">Цена</label>
+                                <input class="form-input" id="price" name="price" type="text" inputmode="decimal" placeholder="Например, 149.90" required/>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label" for="size">Размеры</label>
+                                <input class="form-input" id="size" name="size" type="text" placeholder="Например, 38, 39, 40"/>
+                            </div>
+                            <div class="form-field form-field--full">
+                                <label class="form-label" for="description">Описание</label>
+                                <textarea class="form-textarea" id="description" name="description" placeholder="Кратко опишите ключевые особенности товара" required></textarea>
+                            </div>
+                            <div class="form-field form-field--full">
+                                <span class="form-label">Изображение</span>
+                                <div class="upload-field">
+                                    <label class="upload-field__button" for="product_image">Загрузить изображение</label>
+                                    <input class="upload-field__input" id="product_image" name="image" type="file" accept="image/*" data-upload-input data-upload-target="product" required/>
+                                    <span class="upload-field__filename" data-upload-filename="product">Файл не выбран</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions form-actions--end">
+                            <button class="btn-primary" type="submit">Сохранить товар</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
 			<section class="panel panel--list">
                 <header class="panel__header">
                     <div>
@@ -260,7 +323,61 @@ templ adminDashboard(products []*database.Product, highlightCandidates []*databa
                     }
                 </div>
 			</section>
+            </div>
+            <div class="admin-dashboard__section-group" id="pg3" data-admin-section="pg3" aria-hidden="true">
+                <section class="panel panel--list">
+                    <header class="panel__header">
+                        <div>
+                            <h2 class="panel__title">Пользователи</h2>
+                            <p class="panel__subtitle">Список зарегистрированных покупателей (администраторы скрыты).</p>
+                        </div>
+                    </header>
+                    <div class="panel__content">
+                        if len(users) == 0 {
+                            <div class="empty-state">
+                                <h3 class="empty-state__title">Пока нет пользователей</h3>
+                                <p class="empty-state__text">Как только клиенты зарегистрируются, их данные появятся здесь.</p>
+                            </div>
+                        } else {
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Имя</th>
+                                            <th scope="col">Фамилия</th>
+                                            <th scope="col">Почта</th>
+                                            <th scope="col">Телефон</th>
+                                            <th scope="col">ID</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        for _, user := range users {
+                                            if user == nil {
+                                                continue
+                                            }
+                                            <tr>
+                                                <td>{ strings.TrimSpace(user.FirstName) }</td>
+                                                <td>{ strings.TrimSpace(user.LastName) }</td>
+                                                <td>{ strings.TrimSpace(user.Email) }</td>
+                                                <td>
+                                                    if phone := strings.TrimSpace(user.Phone); phone != "" {
+                                                        { phone }
+                                                    } else {
+                                                        <span class="data-table__placeholder">—</span>
+                                                    }
+                                                </td>
+                                                <td>{ fmt.Sprintf("%d", user.ID) }</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </section>
+            </div>
 
+            <div class="admin-dashboard__section-group is-hidden" id="pg4" data-admin-section="pg4" aria-hidden="true">
 			<section class="panel panel--orders">
 				<header class="panel__header">
 					<div>
@@ -294,7 +411,23 @@ templ adminDashboard(products []*database.Product, highlightCandidates []*databa
 						}
 						<tr>
 							<td>{ fmt.Sprintf("#%d", detail.Order.ID) }</td>
-							<td>ID: { strconv.Itoa(detail.Order.UserID) }</td>
+							<td>
+                                if detail.Order.UserID > 0 {
+                                    <span>Пользователь #{ detail.Order.UserID }</span>
+                                } else {
+                                    if name := strings.TrimSpace(detail.Order.GuestName); name != "" {
+                                        <span>{ name }</span>
+                                    } else {
+                                        <span class="data-table__placeholder">Гость</span>
+                                    }
+                                    if email := strings.TrimSpace(detail.Order.GuestEmail); email != "" {
+                                        <div class="data-table__note">{ email }</div>
+                                    }
+                                    if phone := strings.TrimSpace(detail.Order.GuestPhone); phone != "" {
+                                        <div class="data-table__note">{ phone }</div>
+                                    }
+                                }
+                            </td>
 							<td>{ fmt.Sprintf("%s ₽", strconv.FormatFloat(detail.Order.Total, 'f', 2, 64)) }</td>
 							<td>
 								{
@@ -327,66 +460,21 @@ templ adminDashboard(products []*database.Product, highlightCandidates []*databa
 					}
 				</div>
 			</section>
-
-            <section class="panel panel--banners">
-                <header class="panel__header">
-                    <div>
-                        <h2 class="panel__title">Баннер на главной</h2>
-                        <p class="panel__subtitle">Добавьте ссылки на изображения, чтобы сформировать автопролистывающий баннер на главной странице.</p>
+            </div>
+            <div class="admin-dashboard__section-group admin-dashboard__section-group--empty is-hidden" id="pg5" data-admin-section="pg5" aria-hidden="true">
+                <section class="panel">
+                    <header class="panel__header">
+                        <div>
+                            <h2 class="panel__title">Прочие настройки</h2>
+                            <p class="panel__subtitle">Эти настройки появятся после согласования требований.</p>
+                        </div>
+                    </header>
+                    <div class="panel__content">
+                        <p class="panel__help">Пока изменений нет. Сообщим, когда раздел станет доступен.</p>
                     </div>
-                </header>
-                <div class="panel__content">
-                    <form class="admin-form" method="post" action="/a9s5-panel/banners" enctype="multipart/form-data">
-                        <div class="form-grid">
-                            <div class="form-field form-field--full">
-                                <span class="form-label">Изображение</span>
-                                <div class="upload-field">
-                                    <label class="upload-field__button" for="banner_image">Загрузить изображение</label>
-                                    <input class="upload-field__input" id="banner_image" name="image" type="file" accept="image/*" data-upload-input data-upload-target="banner" required/>
-                                    <span class="upload-field__filename" data-upload-filename="banner">Файл не выбран</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-actions form-actions--end">
-                            <button class="btn-primary" type="submit">Добавить баннер</button>
-                        </div>
-                    </form>
+                </section>
+            </div>
 
-                    if len(banners) == 0 {
-                        <div class="empty-state">
-                            <h3 class="empty-state__title">Список баннеров пуст</h3>
-                            <p class="empty-state__text">Добавьте хотя бы одну ссылку, чтобы баннер появился на главной странице.</p>
-                        </div>
-                    } else {
-                        <div class="table-wrapper">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Порядок</th>
-                                        <th scope="col">Ссылка</th>
-                                        <th scope="col">Действия</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    for index, banner := range banners {
-                                        <tr>
-                                            <td>{ index + 1 }</td>
-                                            <td class="data-table__cell-link">
-                                                <a href={ banner.ImageURL } target="_blank" rel="noopener noreferrer" class="link-button link-button--light">Открыть</a>
-                                            </td>
-                                            <td>
-                                    <form method="post" action={ fmt.Sprintf("/a9s5-panel/banners/%d/delete", banner.ID) } class="table-action">
-                                                    <button class="link-button link-button--dark" type="submit">Удалить</button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                </div>
-            </section>
                 </div>
             </div>
         </div>
@@ -498,6 +586,76 @@ templ adminDashboard(products []*database.Product, highlightCandidates []*databa
                     }
                 });
             });
+
+            var adminNavLinks = doc.querySelectorAll('[data-admin-nav]');
+            var adminSections = doc.querySelectorAll('[data-admin-section]');
+            if (adminNavLinks.length && adminSections.length) {
+                var activeSectionKey = null;
+
+                function hasSection(key) {
+                    if (!key) {
+                        return false;
+                    }
+                    return Array.prototype.some.call(adminSections, function (section) {
+                        return section.getAttribute('data-admin-section') === key;
+                    });
+                }
+
+                function setActiveSection(key, updateHash) {
+                    if (!hasSection(key)) {
+                        key = adminSections[0].getAttribute('data-admin-section');
+                    }
+                    var visibleSection = null;
+                    adminSections.forEach(function (section) {
+                        var sectionKey = section.getAttribute('data-admin-section');
+                        var matches = sectionKey === key;
+                        section.classList.toggle('is-hidden', !matches);
+                        section.classList.toggle('is-active', matches);
+                        section.setAttribute('aria-hidden', matches ? 'false' : 'true');
+                        if (matches) {
+                            visibleSection = section;
+                        }
+                    });
+                    adminNavLinks.forEach(function (link) {
+                        var matches = link.getAttribute('data-admin-nav') === key;
+                        link.classList.toggle('is-active', matches);
+                    });
+                    activeSectionKey = key;
+                    if (updateHash) {
+                        var nextHash = '#' + key;
+                        if (window.location.hash !== nextHash) {
+                            window.history.replaceState(null, '', nextHash);
+                        }
+                        if (visibleSection) {
+                            visibleSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }
+                }
+
+                adminNavLinks.forEach(function (link) {
+                    link.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        var targetKey = link.getAttribute('data-admin-nav');
+                        if (!targetKey || targetKey === activeSectionKey) {
+                            return;
+                        }
+                        setActiveSection(targetKey, true);
+                    });
+                });
+
+                window.addEventListener('hashchange', function () {
+                    var hash = (window.location.hash || '').replace('#', '');
+                    if (hash && hash !== activeSectionKey && hasSection(hash)) {
+                        setActiveSection(hash, false);
+                    }
+                });
+
+                var initialHash = (window.location.hash || '').replace('#', '');
+                if (!initialHash || !hasSection(initialHash)) {
+                    initialHash = adminSections[0].getAttribute('data-admin-section');
+                }
+                setActiveSection(initialHash, false);
+            }
         })();
     </script>
 }

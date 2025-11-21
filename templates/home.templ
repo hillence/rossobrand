@@ -126,20 +126,24 @@ templ Home(products []*database.Product, newArrivals []*database.Product, banner
                                 </div>
                             </div>
                             <div class="new-arrivals__promo">
-                                <div class="new-arrivals__promo-card new-arrivals__promo-card--trenches" data-new-arrivals-promo="trenches">
-                                    <span class="new-arrivals__promo-label">тренчи</span>
+                                <div class="new-arrivals__promo-row new-arrivals__promo-row--wide">
+                                    <div class="new-arrivals__promo-card new-arrivals__promo-card--trenches" data-new-arrivals-promo="trenches">
+                                        <span class="new-arrivals__promo-label">тренчи</span>
+                                    </div>
+                                    <div class="new-arrivals__promo-card new-arrivals__promo-card--coats" data-new-arrivals-promo="coats">
+                                        <span class="new-arrivals__promo-label">пальто</span>
+                                    </div>
                                 </div>
-                                <div class="new-arrivals__promo-card new-arrivals__promo-card--coats" data-new-arrivals-promo="coats">
-                                    <span class="new-arrivals__promo-label">пальто</span>
-                                </div>
-                                <div class="new-arrivals__promo-card new-arrivals__promo-card--puffers" data-new-arrivals-promo="puffers">
-                                    <span class="new-arrivals__promo-label">пуховики</span>
-                                </div>
-                                <div class="new-arrivals__promo-card new-arrivals__promo-card--bags" data-new-arrivals-promo="bags">
-                                    <span class="new-arrivals__promo-label">сумки</span>
-                                </div>
-                                <div class="new-arrivals__promo-card new-arrivals__promo-card--jackets" data-new-arrivals-promo="jackets">
-                                    <span class="new-arrivals__promo-label">куртки</span>
+                                <div class="new-arrivals__promo-row new-arrivals__promo-row--compact">
+                                    <div class="new-arrivals__promo-card new-arrivals__promo-card--puffers" data-new-arrivals-promo="puffers">
+                                        <span class="new-arrivals__promo-label">пуховики</span>
+                                    </div>
+                                    <div class="new-arrivals__promo-card new-arrivals__promo-card--bags" data-new-arrivals-promo="bags">
+                                        <span class="new-arrivals__promo-label">сумки</span>
+                                    </div>
+                                    <div class="new-arrivals__promo-card new-arrivals__promo-card--jackets" data-new-arrivals-promo="jackets">
+                                        <span class="new-arrivals__promo-label">куртки</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -153,6 +157,7 @@ templ Home(products []*database.Product, newArrivals []*database.Product, banner
                     </div>
                 </div>
             </main>
+            @Footer()
             if productAdded {
                 @ProductAddedBanner()
             }

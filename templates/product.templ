@@ -53,7 +53,6 @@ templ ProductDetail(product *database.Product, isAuthenticated bool, isFavorited
                                     class={ fmt.Sprintf("product-view__favorite%s", map[bool]string{true: " product-view__favorite--active", false: ""}[isFavorited]) }
                                     data-favorite-toggle
                                     data-product-id={ fmt.Sprintf("%d", product.ID) }
-                                    data-requires-auth={ fmt.Sprintf("%t", !isAuthenticated) }
                                     data-favorited={ fmt.Sprintf("%t", isFavorited) }
                                     aria-label={ map[bool]string{true: "Удалить из избранного", false: "Добавить в избранное"}[isFavorited] }
                                     aria-pressed={ fmt.Sprintf("%t", isFavorited) }>
@@ -93,7 +92,6 @@ templ ProductDetail(product *database.Product, isAuthenticated bool, isFavorited
                                     class="btn-primary product-view__add-to-cart"
                                     data-cart-add
                                     data-product-id={ fmt.Sprintf("%d", product.ID) }
-                                    data-requires-auth={ fmt.Sprintf("%t", !isAuthenticated) }
                                     data-cart-size-source="[data-selected-size]">
                                     Добавить в корзину
                                 </button>
@@ -102,6 +100,21 @@ templ ProductDetail(product *database.Product, isAuthenticated bool, isFavorited
                     </div>
                 </div>
             </main>
+            <div class="product-view__mobile-bar" data-mobile-actions>
+                <div class="product-view__mobile-bar-inner">
+                    <button type="button" class="product-view__mobile-button product-view__mobile-button--buy" data-buy-now data-product-id={ fmt.Sprintf("%d", product.ID) }>
+                        купить сейчас
+                    </button>
+                    <button
+                        type="button"
+                        class="product-view__mobile-button product-view__mobile-button--cart"
+                        data-cart-add
+                        data-product-id={ fmt.Sprintf("%d", product.ID) }
+                        data-cart-size-source="[data-selected-size]">
+                        добавить в корзину
+                    </button>
+                </div>
+            </div>
             @Banner()
             <script>
                 (function () {

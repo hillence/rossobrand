@@ -103,7 +103,8 @@ func Migrate() error {
             is_admin BOOLEAN DEFAULT FALSE,
             first_name TEXT DEFAULT '',
             last_name TEXT DEFAULT '',
-            avatar_url TEXT
+            avatar_url TEXT,
+            phone TEXT DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS products (
@@ -155,7 +156,10 @@ func Migrate() error {
 
         CREATE TABLE IF NOT EXISTS orders (
             id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            guest_name TEXT,
+            guest_email TEXT,
+            guest_phone TEXT,
             total NUMERIC(10, 2) NOT NULL,
             delivery_type TEXT DEFAULT 'pickup',
             pickup_point TEXT,
@@ -186,6 +190,53 @@ func Migrate() error {
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
 
+        CREATE TABLE IF NOT EXISTS guest_sessions (
+            token TEXT PRIMARY KEY,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS guest_cart_items (
+            session_token TEXT NOT NULL REFERENCES guest_sessions(token) ON DELETE CASCADE,
+            product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+            size TEXT NOT NULL DEFAULT '',
+            quantity INTEGER NOT NULL DEFAULT 1,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            PRIMARY KEY (session_token, product_id, size)
+        );
+
+        CREATE TABLE IF NOT EXISTS guest_favorites (
+            session_token TEXT NOT NULL REFERENCES guest_sessions(token) ON DELETE CASCADE,
+            product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            PRIMARY KEY (session_token, product_id)
+        );
+
+        ALTER TABLE orders
+            ALTER COLUMN user_id DROP NOT NULL;
+
+        ALTER TABLE orders
+            ADD COLUMN IF NOT EXISTS guest_name TEXT;
+
+        ALTER TABLE orders
+            ADD COLUMN IF NOT EXISTS guest_email TEXT;
+
+        ALTER TABLE orders
+            ADD COLUMN IF NOT EXISTS guest_phone TEXT;
+
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.table_constraints
+                WHERE constraint_name = 'orders_user_id_fkey'
+                    AND table_name = 'orders'
+            ) THEN
+                ALTER TABLE orders DROP CONSTRAINT orders_user_id_fkey;
+            END IF;
+        END $$;
+
+        ALTER TABLE orders
+            ADD CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+
         ALTER TABLE users
             ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT '';
 
@@ -194,6 +245,9 @@ func Migrate() error {
 
         ALTER TABLE users
             ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
+        ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT '';
 
         ALTER TABLE cart_items
             ADD COLUMN IF NOT EXISTS size TEXT NOT NULL DEFAULT '';
@@ -215,6 +269,7 @@ type User struct {
 	FirstName    string
 	LastName     string
 	AvatarURL    string
+	Phone        string
 }
 
 type UserSavedAddress struct {
@@ -230,18 +285,19 @@ type MenuSectionImage struct {
 	UpdatedAt time.Time
 }
 
-func CreateUserWithHash(email, passwordHash, firstName, lastName string, isAdmin bool) (*User, error) {
+func CreateUserWithHash(email, passwordHash, firstName, lastName, phone string, isAdmin bool) (*User, error) {
 	user := &User{
 		Email:        email,
 		PasswordHash: passwordHash,
 		IsAdmin:      isAdmin,
 		FirstName:    strings.TrimSpace(firstName),
 		LastName:     strings.TrimSpace(lastName),
+		Phone:        strings.TrimSpace(phone),
 	}
 
 	err := DB.QueryRow(context.Background(),
-		"INSERT INTO users (email, password_hash, is_admin, first_name, last_name, avatar_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-		user.Email, user.PasswordHash, user.IsAdmin, user.FirstName, user.LastName, user.AvatarURL).Scan(&user.ID)
+		"INSERT INTO users (email, password_hash, is_admin, first_name, last_name, avatar_url, phone) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+		user.Email, user.PasswordHash, user.IsAdmin, user.FirstName, user.LastName, user.AvatarURL, user.Phone).Scan(&user.ID)
 
 	if err != nil {
 		return nil, err
@@ -250,19 +306,26 @@ func CreateUserWithHash(email, passwordHash, firstName, lastName string, isAdmin
 	return user, nil
 }
 
-func CreateUser(email, password, firstName, lastName string, isAdmin bool) (*User, error) {
+func CreateUser(email, password, firstName, lastName, phone string, isAdmin bool) (*User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
-	return CreateUserWithHash(email, string(hashedPassword), firstName, lastName, isAdmin)
+	return CreateUserWithHash(email, string(hashedPassword), firstName, lastName, phone, isAdmin)
 }
 
 func UpdateUserPasswordHash(userID int, passwordHash string) error {
 	_, err := DB.Exec(context.Background(),
 		"UPDATE users SET password_hash = $1 WHERE id = $2",
 		passwordHash, userID)
+	return err
+}
+
+func UpdateUserAdminStatus(userID int, isAdmin bool) error {
+	_, err := DB.Exec(context.Background(),
+		"UPDATE users SET is_admin = $1 WHERE id = $2",
+		isAdmin, userID)
 	return err
 }
 
@@ -422,14 +485,36 @@ func stopLocalPostgres() {
 func GetUserByEmail(email string) (*User, error) {
 	user := &User{}
 	err := DB.QueryRow(context.Background(),
-		"SELECT id, email, password_hash, is_admin, COALESCE(first_name, ''), COALESCE(last_name, ''), COALESCE(avatar_url, '') FROM users WHERE email = $1",
-		email).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.IsAdmin, &user.FirstName, &user.LastName, &user.AvatarURL)
+		"SELECT id, email, password_hash, is_admin, COALESCE(first_name, ''), COALESCE(last_name, ''), COALESCE(avatar_url, ''), COALESCE(phone, '') FROM users WHERE email = $1",
+		email).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.IsAdmin, &user.FirstName, &user.LastName, &user.AvatarURL, &user.Phone)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return user, nil
+}
+
+func GetNonAdminUsers() ([]*User, error) {
+	rows, err := DB.Query(context.Background(),
+		"SELECT id, email, COALESCE(first_name, ''), COALESCE(last_name, ''), COALESCE(phone, ''), COALESCE(avatar_url, '') FROM users WHERE COALESCE(is_admin, FALSE) = FALSE ORDER BY id ASC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		user := &User{}
+		if err := rows.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName, &user.Phone, &user.AvatarURL); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return users, nil
 }
 
 func UpdateUserAvatar(userID int, avatarURL string) error {
@@ -926,6 +1011,117 @@ func GetFavoriteProductIDs(userID int) (map[int]bool, error) {
 	return result, nil
 }
 
+func EnsureGuestSession(token string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return fmt.Errorf("session token is required")
+	}
+	_, err := DB.Exec(context.Background(), `
+        INSERT INTO guest_sessions (token)
+        VALUES ($1)
+        ON CONFLICT DO NOTHING
+    `, token)
+	return err
+}
+
+func AddGuestFavorite(token string, productID int) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return fmt.Errorf("session token is required")
+	}
+	_, err := DB.Exec(context.Background(),
+		"INSERT INTO guest_favorites (session_token, product_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+		token, productID)
+	return err
+}
+
+func RemoveGuestFavorite(token string, productID int) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return fmt.Errorf("session token is required")
+	}
+	_, err := DB.Exec(context.Background(),
+		"DELETE FROM guest_favorites WHERE session_token = $1 AND product_id = $2",
+		token, productID)
+	return err
+}
+
+func IsGuestFavorite(token string, productID int) (bool, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return false, nil
+	}
+	var exists bool
+	err := DB.QueryRow(context.Background(),
+		"SELECT EXISTS (SELECT 1 FROM guest_favorites WHERE session_token = $1 AND product_id = $2)",
+		token, productID).Scan(&exists)
+	return exists, err
+}
+
+func GetGuestFavoriteProductIDs(token string) (map[int]bool, error) {
+	token = strings.TrimSpace(token)
+	result := make(map[int]bool)
+	if token == "" {
+		return result, nil
+	}
+	rows, err := DB.Query(context.Background(),
+		"SELECT product_id FROM guest_favorites WHERE session_token = $1",
+		token)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		result[id] = true
+	}
+	return result, nil
+}
+
+func GetGuestFavoriteProducts(token string) ([]*Product, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil, nil
+	}
+	rows, err := DB.Query(context.Background(),
+		`SELECT p.id, p.name, p.description, p.price, p.image_url, COALESCE(p.size, '')
+         FROM guest_favorites gf 
+         JOIN products p ON p.id = gf.product_id
+         WHERE gf.session_token = $1
+         ORDER BY gf.created_at DESC`,
+		token)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []*Product
+	for rows.Next() {
+		p := &Product{}
+		if err := rows.Scan(&p.ID, &p.Name, &p.Description, &p.Price, &p.ImageURL, &p.Size); err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+	return products, nil
+}
+
+func GetGuestFavoriteCount(token string) (int, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return 0, nil
+	}
+	var count int
+	err := DB.QueryRow(context.Background(),
+		"SELECT COUNT(*) FROM guest_favorites WHERE session_token = $1",
+		token).Scan(&count)
+	return count, err
+}
+
 func GetFavoriteProducts(userID int) ([]*Product, error) {
 	rows, err := DB.Query(context.Background(),
 		`SELECT p.id, p.name, p.description, p.price, p.image_url, COALESCE(p.size, '')
@@ -970,6 +1166,9 @@ type CartItem struct {
 type Order struct {
 	ID           int
 	UserID       int
+	GuestName    string
+	GuestEmail   string
+	GuestPhone   string
 	Total        float64
 	DeliveryType string
 	PickupPoint  string
@@ -1058,7 +1257,7 @@ func GetCartItems(userID int) ([]*CartItem, error) {
 	return items, nil
 }
 
-func CreateOrderWithItems(userID int, items []*CartItem, deliveryType, pickupPoint, address string) (detail *OrderDetail, err error) {
+func CreateOrderWithItems(userID int, items []*CartItem, deliveryType, pickupPoint, address, guestName, guestEmail, guestPhone string) (detail *OrderDetail, err error) {
 	if len(items) == 0 {
 		return nil, fmt.Errorf("cart is empty")
 	}
@@ -1093,8 +1292,15 @@ func CreateOrderWithItems(userID int, items []*CartItem, deliveryType, pickupPoi
 		computedTotal += item.Product.Price * float64(item.Quantity)
 	}
 
+	trimmedGuestName := strings.TrimSpace(guestName)
+	trimmedGuestEmail := strings.TrimSpace(guestEmail)
+	trimmedGuestPhone := strings.TrimSpace(guestPhone)
+
 	order := &Order{
 		UserID:       userID,
+		GuestName:    trimmedGuestName,
+		GuestEmail:   trimmedGuestEmail,
+		GuestPhone:   trimmedGuestPhone,
 		Total:        computedTotal,
 		DeliveryType: trimmedDeliveryType,
 		PickupPoint:  trimmedPickup,
@@ -1102,10 +1308,10 @@ func CreateOrderWithItems(userID int, items []*CartItem, deliveryType, pickupPoi
 	}
 
 	err = tx.QueryRow(ctx, `
-        INSERT INTO orders (user_id, total, delivery_type, pickup_point, address)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO orders (user_id, guest_name, guest_email, guest_phone, total, delivery_type, pickup_point, address)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id, created_at
-    `, order.UserID, order.Total, order.DeliveryType, nullString(order.PickupPoint), nullString(order.Address)).Scan(&order.ID, &order.CreatedAt)
+    `, nullInt(order.UserID), nullString(order.GuestName), nullString(order.GuestEmail), nullString(order.GuestPhone), order.Total, order.DeliveryType, nullString(order.PickupPoint), nullString(order.Address)).Scan(&order.ID, &order.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -1153,6 +1359,13 @@ func nullString(value string) interface{} {
 	return value
 }
 
+func nullInt(value int) interface{} {
+	if value <= 0 {
+		return nil
+	}
+	return value
+}
+
 func GetCartItemQuantity(userID, productID int, size string) (int, bool, error) {
 	size = strings.TrimSpace(size)
 	var quantity int
@@ -1181,7 +1394,7 @@ func fetchOrderDetails(query string, args ...interface{}) ([]*OrderDetail, error
 	for rows.Next() {
 		var ord Order
 		var item OrderItem
-		err := rows.Scan(&ord.ID, &ord.UserID, &ord.Total, &ord.DeliveryType, &ord.PickupPoint, &ord.Address, &ord.CreatedAt,
+		err := rows.Scan(&ord.ID, &ord.UserID, &ord.GuestName, &ord.GuestEmail, &ord.GuestPhone, &ord.Total, &ord.DeliveryType, &ord.PickupPoint, &ord.Address, &ord.CreatedAt,
 			&item.ID, &item.ProductID, &item.ProductName, &item.ProductPrice, &item.Size, &item.Quantity, &item.ProductImageURL)
 		if err != nil {
 			return nil, err
@@ -1220,7 +1433,16 @@ func fetchOrderDetails(query string, args ...interface{}) ([]*OrderDetail, error
 
 func GetOrdersByUser(userID int) ([]*OrderDetail, error) {
 	return fetchOrderDetails(`
-        SELECT o.id, o.user_id, o.total, o.delivery_type, COALESCE(o.pickup_point, ''), COALESCE(o.address, ''), o.created_at,
+        SELECT o.id,
+               COALESCE(o.user_id, 0),
+               COALESCE(o.guest_name, ''),
+               COALESCE(o.guest_email, ''),
+               COALESCE(o.guest_phone, ''),
+               o.total,
+               o.delivery_type,
+               COALESCE(o.pickup_point, ''),
+               COALESCE(o.address, ''),
+               o.created_at,
                oi.id, oi.product_id, oi.product_name, oi.product_price, oi.size, oi.quantity, COALESCE(p.image_url, '')
         FROM orders o
         JOIN order_items oi ON oi.order_id = o.id
@@ -1232,7 +1454,16 @@ func GetOrdersByUser(userID int) ([]*OrderDetail, error) {
 
 func GetAllOrders() ([]*OrderDetail, error) {
 	return fetchOrderDetails(`
-        SELECT o.id, o.user_id, o.total, o.delivery_type, COALESCE(o.pickup_point, ''), COALESCE(o.address, ''), o.created_at,
+        SELECT o.id,
+               COALESCE(o.user_id, 0),
+               COALESCE(o.guest_name, ''),
+               COALESCE(o.guest_email, ''),
+               COALESCE(o.guest_phone, ''),
+               o.total,
+               o.delivery_type,
+               COALESCE(o.pickup_point, ''),
+               COALESCE(o.address, ''),
+               o.created_at,
                oi.id, oi.product_id, oi.product_name, oi.product_price, oi.size, oi.quantity, COALESCE(p.image_url, '')
         FROM orders o
         JOIN order_items oi ON oi.order_id = o.id
@@ -1258,6 +1489,144 @@ func GetCartTotal(userID int) (float64, error) {
         WHERE ci.user_id = $1
     `, userID).Scan(&total)
 	return total, err
+}
+
+func AddGuestCartItem(token string, productID int, size string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return fmt.Errorf("session token is required")
+	}
+	size = strings.TrimSpace(size)
+	_, err := DB.Exec(context.Background(), `
+        INSERT INTO guest_cart_items (session_token, product_id, size, quantity)
+        VALUES ($1, $2, $3, 1)
+        ON CONFLICT (session_token, product_id, size)
+        DO UPDATE SET quantity = guest_cart_items.quantity + 1,
+                      created_at = NOW()
+    `, token, productID, size)
+	return err
+}
+
+func DecrementGuestCartItem(token string, productID int, size string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return fmt.Errorf("session token is required")
+	}
+	size = strings.TrimSpace(size)
+	_, err := DB.Exec(context.Background(), `
+        WITH decremented AS (
+            UPDATE guest_cart_items
+            SET quantity = quantity - 1,
+                created_at = NOW()
+            WHERE session_token = $1 AND product_id = $2 AND size = $3 AND quantity > 1
+            RETURNING 1
+        )
+        DELETE FROM guest_cart_items
+        WHERE session_token = $1 AND product_id = $2 AND size = $3
+          AND NOT EXISTS (SELECT 1 FROM decremented)
+    `, token, productID, size)
+	return err
+}
+
+func RemoveGuestCartItem(token string, productID int, size string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return fmt.Errorf("session token is required")
+	}
+	size = strings.TrimSpace(size)
+	_, err := DB.Exec(context.Background(),
+		"DELETE FROM guest_cart_items WHERE session_token = $1 AND product_id = $2 AND size = $3",
+		token, productID, size)
+	return err
+}
+
+func GetGuestCartItems(token string) ([]*CartItem, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil, nil
+	}
+	rows, err := DB.Query(context.Background(), `
+        SELECT p.id, p.name, p.description, p.price, p.image_url, COALESCE(p.size, ''), ci.size, ci.quantity
+        FROM guest_cart_items ci
+        JOIN products p ON p.id = ci.product_id
+        WHERE ci.session_token = $1
+        ORDER BY ci.created_at DESC
+    `, token)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []*CartItem
+	for rows.Next() {
+		product := &Product{}
+		item := &CartItem{Product: product}
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Price, &product.ImageURL, &product.Size, &item.Size, &item.Quantity); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func GetGuestCartItemQuantity(token string, productID int, size string) (int, bool, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return 0, false, nil
+	}
+	size = strings.TrimSpace(size)
+	var quantity int
+	err := DB.QueryRow(context.Background(),
+		"SELECT quantity FROM guest_cart_items WHERE session_token = $1 AND product_id = $2 AND size = $3",
+		token, productID, size).Scan(&quantity)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return quantity, true, nil
+}
+
+func GetGuestCartItemCount(token string) (int, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return 0, nil
+	}
+	var count int
+	err := DB.QueryRow(context.Background(),
+		"SELECT COALESCE(SUM(quantity), 0) FROM guest_cart_items WHERE session_token = $1",
+		token).Scan(&count)
+	return count, err
+}
+
+func GetGuestCartTotal(token string) (float64, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return 0, nil
+	}
+	var total float64
+	err := DB.QueryRow(context.Background(), `
+        SELECT COALESCE(SUM(p.price * ci.quantity), 0)
+        FROM guest_cart_items ci
+        JOIN products p ON p.id = ci.product_id
+        WHERE ci.session_token = $1
+    `, token).Scan(&total)
+	return total, err
+}
+
+func ClearGuestCart(token string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil
+	}
+	_, err := DB.Exec(context.Background(),
+		"DELETE FROM guest_cart_items WHERE session_token = $1",
+		token)
+	return err
 }
 
 func GetFavoriteCount(userID int) (int, error) {

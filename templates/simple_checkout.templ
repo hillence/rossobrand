@@ -58,7 +58,12 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="pickup-phone">телефон</label>
-                                            <input class="form-input" id="pickup-phone" type="tel" placeholder="+7 (___) ___-__-__"/>
+                                            <input class="form-input" id="pickup-phone" type="tel" placeholder="+7 (___) ___-__-__" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.Phone)
+                                            }() }/>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="pickup-first-name">имя</label>
@@ -67,7 +72,7 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                                     return ""
                                                 }
                                                 return strings.TrimSpace(user.FirstName)
-                                            }() } readonly/>
+                                            }() }/>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="pickup-last-name">фамилия</label>
@@ -76,7 +81,7 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                                     return ""
                                                 }
                                                 return strings.TrimSpace(user.LastName)
-                                            }() } readonly/>
+                                            }() }/>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="pickup-email">почта</label>
@@ -85,7 +90,7 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                                     return ""
                                                 }
                                                 return strings.TrimSpace(user.Email)
-                                            }() } readonly/>
+                                            }() }/>
                                         </div>
                                     </div>
                                 </form>
@@ -117,7 +122,12 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="courier-phone">Телефон</label>
-                                            <input class="form-input" id="courier-phone" type="tel" placeholder="+7 (___) ___-__-__"/>
+                                            <input class="form-input" id="courier-phone" type="tel" placeholder="+7 (___) ___-__-__" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.Phone)
+                                            }() }/>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="courier-first-name">Имя</label>
@@ -126,7 +136,7 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                                     return ""
                                                 }
                                                 return strings.TrimSpace(user.FirstName)
-                                            }() } readonly/>
+                                            }() }/>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="courier-last-name">Фамилия</label>
@@ -135,7 +145,7 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                                     return ""
                                                 }
                                                 return strings.TrimSpace(user.LastName)
-                                            }() } readonly/>
+                                            }() }/>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="courier-email">Email</label>
@@ -144,7 +154,7 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                                     return ""
                                                 }
                                                 return strings.TrimSpace(user.Email)
-                                            }() } readonly/>
+                                            }() }/>
                                         </div>
                                     </div>
                                 </form>
@@ -160,7 +170,12 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="post-phone">Телефон</label>
-                                            <input class="form-input" id="post-phone" type="tel" placeholder="+7 (___) ___-__-__"/>
+                                            <input class="form-input" id="post-phone" type="tel" placeholder="+7 (___) ___-__-__" value={ func() string {
+                                                if user == nil {
+                                                    return ""
+                                                }
+                                                return strings.TrimSpace(user.Phone)
+                                            }() }/>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="post-first-name">Имя</label>
@@ -169,7 +184,7 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                                     return ""
                                                 }
                                                 return strings.TrimSpace(user.FirstName)
-                                            }() } readonly/>
+                                            }() }/>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="post-last-name">Фамилия</label>
@@ -178,7 +193,7 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                                     return ""
                                                 }
                                                 return strings.TrimSpace(user.LastName)
-                                            }() } readonly/>
+                                            }() }/>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="post-email">Email</label>
@@ -187,7 +202,7 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                                     return ""
                                                 }
                                                 return strings.TrimSpace(user.Email)
-                                            }() } readonly/>
+                                            }() }/>
                                         </div>
                                     </div>
                                 </form>
@@ -249,6 +264,11 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                 </div>
                                     <input type="hidden" name="delivery_type" value="pickup" data-delivery-type-input/>
                                     <input type="hidden" name="pickup_point" data-pickup-submit-value/>
+                                    <input type="hidden" name="first_name" data-order-first-name/>
+                                    <input type="hidden" name="last_name" data-order-last-name/>
+                                    <input type="hidden" name="email" data-order-email/>
+                                    <input type="hidden" name="phone" data-order-phone/>
+                                    <input type="hidden" name="address" data-order-address-input/>
                                     <button type="submit" class="order-summary__submit">оформить заказ</button>
                                 </form>
                             </aside>
@@ -280,6 +300,25 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                     var pickupSelectedText = doc.querySelector('[data-pickup-selected]');
                     var pickupSelectedDefault = pickupSelectedText ? pickupSelectedText.textContent : '';
                     var orderForm = doc.querySelector('[data-order-submit-form]');
+                    var orderFirstNameInput = doc.querySelector('[data-order-first-name]');
+                    var orderLastNameInput = doc.querySelector('[data-order-last-name]');
+                    var orderEmailInput = doc.querySelector('[data-order-email]');
+                    var orderPhoneInput = doc.querySelector('[data-order-phone]');
+                    var orderAddressInput = doc.querySelector('[data-order-address-input]');
+                    var pickupFirstNameInput = doc.querySelector('#pickup-first-name');
+                    var pickupLastNameInput = doc.querySelector('#pickup-last-name');
+                    var pickupEmailInput = doc.querySelector('#pickup-email');
+                    var pickupPhoneInput = doc.querySelector('#pickup-phone');
+                    var courierFirstNameInput = doc.querySelector('#courier-first-name');
+                    var courierLastNameInput = doc.querySelector('#courier-last-name');
+                    var courierEmailInput = doc.querySelector('#courier-email');
+                    var courierPhoneInput = doc.querySelector('#courier-phone');
+                    var courierAddressInput = doc.querySelector('#courier-address');
+                    var postFirstNameInput = doc.querySelector('#post-first-name');
+                    var postLastNameInput = doc.querySelector('#post-last-name');
+                    var postEmailInput = doc.querySelector('#post-email');
+                    var postPhoneInput = doc.querySelector('#post-phone');
+                    var postAddressInput = doc.querySelector('#post-address');
                     var mapOverlay = doc.querySelector('[data-pickup-map]');
                     var mapCanvas = doc.querySelector('[data-pickup-map-canvas]');
                     var mapCloseElements = doc.querySelectorAll('[data-pickup-map-close]');
@@ -331,6 +370,11 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
 
                     if (deliveryButtons.length) {
                         activate(deliveryButtons[0].dataset.delivery);
+                    }
+
+                    function getInputValue(input) {
+                        if (!input) { return ''; }
+                        return (input.value || '').trim();
                     }
 
                     function normalizeCityName(value) {
@@ -660,8 +704,97 @@ templ SimpleCheckout(user *database.User, address string, items []*database.Cart
                                 if (pickupTrigger) {
                                     pickupTrigger.focus();
                                 }
+                                return;
+                            }
+
+                            var details = collectCustomerDetails(type);
+                            if (!details.valid) {
+                                event.preventDefault();
+                                if (details.focus && typeof details.focus.focus === 'function') {
+                                    details.focus.focus();
+                                }
+                                return;
+                            }
+
+                            if (orderFirstNameInput) {
+                                orderFirstNameInput.value = details.firstName;
+                            }
+                            if (orderLastNameInput) {
+                                orderLastNameInput.value = details.lastName;
+                            }
+                            if (orderEmailInput) {
+                                orderEmailInput.value = details.email;
+                            }
+                            if (orderPhoneInput) {
+                                orderPhoneInput.value = details.phone;
+                            }
+                            if (orderAddressInput) {
+                                orderAddressInput.value = details.address;
                             }
                         });
+                    }
+
+                    function collectCustomerDetails(type) {
+                        var result = {
+                            valid: true,
+                            focus: null,
+                            firstName: '',
+                            lastName: '',
+                            email: '',
+                            phone: '',
+                            address: ''
+                        };
+                        var requiredFields = [];
+
+                        if (type === 'pickup') {
+                            result.firstName = getInputValue(pickupFirstNameInput);
+                            result.lastName = getInputValue(pickupLastNameInput);
+                            result.email = getInputValue(pickupEmailInput);
+                            result.phone = getInputValue(pickupPhoneInput);
+                            result.address = pickupSubmitInput ? pickupSubmitInput.value : '';
+                            requiredFields = [
+                                { value: result.firstName, input: pickupFirstNameInput },
+                                { value: result.lastName, input: pickupLastNameInput },
+                                { value: result.email, input: pickupEmailInput },
+                                { value: result.phone, input: pickupPhoneInput }
+                            ];
+                        } else if (type === 'courier') {
+                            result.firstName = getInputValue(courierFirstNameInput);
+                            result.lastName = getInputValue(courierLastNameInput);
+                            result.email = getInputValue(courierEmailInput);
+                            result.phone = getInputValue(courierPhoneInput);
+                            result.address = getInputValue(courierAddressInput);
+                            requiredFields = [
+                                { value: result.firstName, input: courierFirstNameInput },
+                                { value: result.lastName, input: courierLastNameInput },
+                                { value: result.email, input: courierEmailInput },
+                                { value: result.phone, input: courierPhoneInput },
+                                { value: result.address, input: courierAddressInput }
+                            ];
+                        } else {
+                            result.firstName = getInputValue(postFirstNameInput);
+                            result.lastName = getInputValue(postLastNameInput);
+                            result.email = getInputValue(postEmailInput);
+                            result.phone = getInputValue(postPhoneInput);
+                            result.address = getInputValue(postAddressInput);
+                            requiredFields = [
+                                { value: result.firstName, input: postFirstNameInput },
+                                { value: result.lastName, input: postLastNameInput },
+                                { value: result.email, input: postEmailInput },
+                                { value: result.phone, input: postPhoneInput },
+                                { value: result.address, input: postAddressInput }
+                            ];
+                        }
+
+                        for (var i = 0; i < requiredFields.length; i += 1) {
+                            if (!requiredFields[i].value) {
+                                result.valid = false;
+                                result.focus = requiredFields[i].input;
+                                break;
+                            }
+                        }
+
+                        return result;
                     }
                 })();
             </script>
