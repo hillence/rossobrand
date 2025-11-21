@@ -85,7 +85,7 @@ func run() error {
 	if adminEmail == "" || adminPassword == "" {
 		return errors.New("ADMIN_EMAIL and ADMIN_PASSWORD must be configured")
 	}
-	listenAddr := normalizePort(os.Getenv("APP_PORT"))
+	listenAddr := normalizePort(resolveAppPort())
 
 	// IMPORTANT: Replace with your actual database connection string
 	if err := database.Connect(); err != nil {
@@ -1363,6 +1363,18 @@ func normalizePort(value string) string {
 		return value
 	}
 	return ":" + value
+}
+
+// resolveAppPort picks the best port value, preferring explicit APP_PORT,
+// then standard PORT, then falling back to 8080.
+func resolveAppPort() string {
+	if value := strings.TrimSpace(os.Getenv("APP_PORT")); value != "" {
+		return value
+	}
+	if value := strings.TrimSpace(os.Getenv("PORT")); value != "" {
+		return value
+	}
+	return "8080"
 }
 
 func AdminMiddleware(adminEmail string) fiber.Handler {
